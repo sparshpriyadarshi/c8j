@@ -1,0 +1,13 @@
+package dev.sp.c8j;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+
+@SpringBootTest
+class C8JApplicationTests {
+
+	@Test
+	void contextLoads() {
+	}
+
+}
