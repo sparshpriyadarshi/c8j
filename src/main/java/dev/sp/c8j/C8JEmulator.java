@@ -16,6 +16,8 @@ import java.util.Stack;
 public class C8JEmulator {
 
     private static int MAX_ADDRESSIBLE_BYTES = 4096;// 0x1000
+    private static int FONT_MEM_BASE_IDX = 80;// 0x050
+    private static int FONT_MEM_LAST_IDX = 159;// 0x09F
     private static int PROGRAM_MEM_BASE_IDX = 512;// 0x200
     private static int PROGRAM_MEM_LAST_IDX = 3743;// 0xE9F
     private static int INSTRUCTION_WIDTH = 2; // 2 bytes
@@ -45,6 +47,7 @@ public class C8JEmulator {
         soundTimer = 0;
         memory = new byte[MAX_ADDRESSIBLE_BYTES];
 
+        loadFonts();
         // get hold of a "default" program to run
         readCh8Binary(Paths.get(DEFAULT_PROGRAM_SRC_FILEPATH));
         pc = loadProgram();
@@ -61,7 +64,32 @@ public class C8JEmulator {
         System.out.println(HEX_LINEAR_FORMATTER.formatHex(program));
         fileInputStream.close();
     }
-
+    private void loadFonts(){
+        //load 0 to F's font sprites in memory, 
+        byte[] fonts = new byte[]{
+            (byte)0xF0, (byte)0x90, (byte)0x90, (byte)0x90, (byte)0xF0, // 0
+            (byte)0x20, (byte)0x60, (byte)0x20, (byte)0x20, (byte)0x70, // 1
+            (byte)0xF0, (byte)0x10, (byte)0xF0, (byte)0x80, (byte)0xF0, // 2
+            (byte)0xF0, (byte)0x10, (byte)0xF0, (byte)0x10, (byte)0xF0, // 3
+            (byte)0x90, (byte)0x90, (byte)0xF0, (byte)0x10, (byte)0x10, // 4
+            (byte)0xF0, (byte)0x80, (byte)0xF0, (byte)0x10, (byte)0xF0, // 5
+            (byte)0xF0, (byte)0x80, (byte)0xF0, (byte)0x90, (byte)0xF0, // 6
+            (byte)0xF0, (byte)0x10, (byte)0x20, (byte)0x40, (byte)0x40, // 7
+            (byte)0xF0, (byte)0x90, (byte)0xF0, (byte)0x90, (byte)0xF0, // 8
+            (byte)0xF0, (byte)0x90, (byte)0xF0, (byte)0x10, (byte)0xF0, // 9
+            (byte)0xF0, (byte)0x90, (byte)0xF0, (byte)0x90, (byte)0x90, // A
+            (byte)0xE0, (byte)0x90, (byte)0xE0, (byte)0x90, (byte)0xE0, // B
+            (byte)0xF0, (byte)0x80, (byte)0x80, (byte)0x80, (byte)0xF0, // C
+            (byte)0xE0, (byte)0x90, (byte)0x90, (byte)0x90, (byte)0xE0, // D
+            (byte)0xF0, (byte)0x80, (byte)0xF0, (byte)0x80, (byte)0xF0, // E
+            (byte)0xF0, (byte)0x80, (byte)0xF0, (byte)0x80, (byte)0x80  // F
+        };
+        int fontIdx = 0;
+        for (int idx = FONT_MEM_BASE_IDX; idx <= FONT_MEM_LAST_IDX; idx++) {
+            memory[idx] = fonts[fontIdx]; fontIdx++;
+        }
+        
+    }
     private int loadProgram() {
         // initialize memory with program bytes
         for (int idx = PROGRAM_MEM_BASE_IDX; idx < PROGRAM_MEM_BASE_IDX + program.length; idx++) {
@@ -161,6 +189,11 @@ public class C8JEmulator {
         }
         System.out.println();
     }
+    public static void testFonts(C8JEmulator emu){
+        for(int i = 0; i < 80; i++){
+            System.out.printf("Font byte = %x %n", emu.memory[FONT_MEM_BASE_IDX + i]);
+        }
+    }
 
     public static void main(String[] args) {
         System.out.println("Running C8MJ... | Current time = " + LocalDateTime.now());
@@ -173,10 +206,10 @@ public class C8JEmulator {
             return;
         }
 
-        // System.out.println(emu);
+        System.out.println(emu);
         emu.run();
        
-		// testBytes();
+		
         System.out.println("Exiting C8MJ... | time = " + LocalDateTime.now());
     }
 }
