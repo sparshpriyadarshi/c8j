@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
+import java.util.Scanner;
 import java.util.Stack;
 
 /**
@@ -128,19 +129,37 @@ public class C8JEmulator {
         return HEX_LINEAR_FORMATTER.toHexDigits(instruction);
     }
 
-    private void decode() {
+    private byte[] decode() { // fetch vs decode is irrelevant in this trivial use case of chip8...
         String instructionHexString = HEX_LINEAR_FORMATTER.toHexDigits(instruction);
         System.out.println("Decoding instruction: " + instructionHexString);
+
+        byte[] decodedInstruction = new byte[4]; //technically we need nibbles, but this will do.
+        //TODO fill this...
+        return decodedInstruction;
     }
 
-    private void execute() {
-        // TODO
+    private void execute(byte[] decodedInstruction) {
+        assert decodedInstruction.length == 4 : "instruction decoded not 4 bytes";
+
+        switch (decodedInstruction[0]) {
+            case 0x1:
+                System.out.println("1NNN instr Jump");
+                break;
+            case 0x8:
+                System.out.println("8XYZ instr decoded");
+                break;
+            case 0xf:
+                System.out.println("FXNN instr decoded");
+                break;
+            default:
+                System.out.printf("%x decoded intr unimplemented %n", instruction);
+                break;
+        }
     }
 
     private void step() {
         fetch();
-        decode();
-        execute();
+        execute(decode());
     }
 
     public void run() {
@@ -178,6 +197,15 @@ public class C8JEmulator {
         sb.append(String.format("-- .:..%n"));
         return sb.toString();
     }
+    public String dumpRegs(){
+        StringBuilder sb = new StringBuilder();
+        sb.append(String.format("I = %d%n", iReg));
+        for (int i = 0; i < 16; i++) {
+            sb.append(String.format("V%02d|V%X = %03d or #%s%n", i, i, vRegs[i],
+                    HEX_LINEAR_FORMATTER.toHexDigits(vRegs[i])));
+        }
+        return sb.toString();
+    }
 
     public String toString() {
         return dumpString();
@@ -205,11 +233,49 @@ public class C8JEmulator {
             System.err.println("Abnormally exiting C8MJ !");
             return;
         }
-
         System.out.println(emu);
-        emu.run();
-       
-		
+
+        Scanner scanner = new Scanner(System.in);
+        boolean replLoop = true;
+        char inChar = 'z';
+        while (replLoop) {
+            System.out.print("c8j>");
+            inChar = scanner.next().charAt(0);
+            
+            //System.out.printf("read ch = %c \n", inChar);
+
+            switch (inChar) {
+                case 'h':
+                    System.out.println("q=quit,s=step,r=run,g=registers,m=memory,p=program-counter,d=display");
+                    break;
+                case 'q': // quit
+                    replLoop = false;
+                    break;
+                case 's': // step
+                    emu.step();
+                    System.out.println(emu);
+                    break;
+                case 'r': // run
+                    emu.run();
+                    break;
+                case 'g': // show regs
+                    System.out.println(emu.dumpRegs());
+                    break;
+                case 'm': // show mem
+                    break;
+                case 'p': // show pc
+                    System.out.println(emu.pc);
+                    break;
+                case 'd': // show display
+                    System.out.println("FAKE DISPLAY");
+                    break;
+                default:
+                    System.out.println("Unimplemented...");
+                    break;
+            }
+        }
+        scanner.close();
+
         System.out.println("Exiting C8MJ... | time = " + LocalDateTime.now());
     }
 }
