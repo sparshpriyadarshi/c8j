@@ -8,6 +8,7 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.HexFormat;
+import java.util.Random;
 import java.util.Scanner;
 import java.util.Stack;
 import java.util.logging.Logger;
@@ -39,6 +40,12 @@ public class C8JEmulator {
     private byte[] decodedInstructions;              // intermediate use only
 
     private long[] displayLines;                     // monochrome display 64 x 32 pixels
+
+
+    private byte keyPress;                           // valid keys are 0123456789abcdef
+    //wonder if this keypress tracker should be gaurded....
+    
+    
     
     // This welcome screen program is always loaded by default
     public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/c8splash.ch8"; // TODO this path can be
@@ -52,8 +59,8 @@ public class C8JEmulator {
         iRegister = 0;
         stack = new Stack<>();
         programCounter = 0;
-        delayTimer = 0;
-        soundTimer = 0;
+        delayTimer = (byte)0xFF;//TODO set off timers
+        soundTimer = (byte)0xFF;//TODO set of timers
         memory = new byte[MAX_ADDRESSIBLE_BYTES];
 
         loadFonts();
@@ -65,6 +72,7 @@ public class C8JEmulator {
         decodedInstructions = new byte[4];
 
         displayLines = new long[DISP_H]; //long's width = 64
+        keyPress = 'X'; //keypad should be classed 
     }
 
     private void readCh8Binary(Path path) throws IOException {
@@ -127,7 +135,7 @@ public class C8JEmulator {
         assert programCounter >= PROGRAM_MEM_BASE_IDX && programCounter <= PROGRAM_MEM_LAST_IDX : "Program Counter out of bounds: " + programCounter;
 
         // TODO: investigate this and idiomatic refactors, java has signed bytes
-        instruction = 0x00;
+        instruction = 0x0000;
         instruction = (short) (instruction | memory[programCounter] & 0xFF);
         instruction = (short) (instruction << Byte.SIZE);
         instruction = (short) (instruction | memory[programCounter + 1] & 0xFF);
@@ -150,31 +158,32 @@ public class C8JEmulator {
         decodedInstructions[2] = (byte) 0xBE; 
         decodedInstructions[3] = (byte) 0xAD; 
 
-        decodedInstructions[0] = (byte)((instruction >> 12) & 0xF); //shift to get the nibble, maskoff higher nibble, cast
-        decodedInstructions[1] = (byte)((instruction >>  8) & 0xF); 
-        decodedInstructions[2] = (byte)((instruction >>  4) & 0xF); 
-        decodedInstructions[3] = (byte)((instruction >>  0) & 0xF); 
+        decodedInstructions[0] = (byte)((instruction >>> 12) & 0xF); //shift to get the nibble, maskoff higher nibble, cast
+        decodedInstructions[1] = (byte)((instruction >>>  8) & 0xF); 
+        decodedInstructions[2] = (byte)((instruction >>>  4) & 0xF); 
+        decodedInstructions[3] = (byte)((instruction >>>  0) & 0xF); 
 
         return decodedInstructions;
     }
 
-    private void execute(byte[] decodedInstructions) {
+    private void execute(byte[] decodedInstructions) throws Exception {
         assert decodedInstructions.length == 4 : "instruction doesn't have 4 nibbles" + decodedInstructions;
 
-        System.out.printf("decoded instr = %x%x%x%x\n", decodedInstructions[0],decodedInstructions[1],decodedInstructions[2],decodedInstructions[3]);
-        int x,y;
+        System.out.printf("decoded instr = %x%x%x%x\n", decodedInstructions[0], decodedInstructions[1],
+                decodedInstructions[2], decodedInstructions[3]);
+        int x, y;
         byte n;
-
-        switch (decodedInstructions[0]) {
+        switch (decodedInstructions[0]) {// TODO: refactor this big switch and dcoder better....
             case 0x0:
                 if (decodedInstructions[1] == 0x0 && decodedInstructions[2] == 0xE && decodedInstructions[3] == 0x0) { // 00E0
-                    System.out.println("00E0 clearing screen");// TODO
+                    System.out.println("00E0 clearing screen");
+                    displayLines = new long[DISP_H];
                 } else if (decodedInstructions[1] == 0x0 && decodedInstructions[2] == 0xE
                         && decodedInstructions[3] == 0xE) {// 00EE
                     programCounter = stack.pop();
                     System.out.printf("00EE ret from subrt to %x\n", programCounter);
-                } else { // 0NNN
-                    System.out.println("0NNN exec mach lang subrt at NNN");// TODO
+                } else { // 0NNN calls machine language subroutine at NNN,not implemented here...
+                    throw new Exception("0NNN exec mach lang subrt at NNN, this is unimplemented");
                 }
                 break;
             case 0x1:
@@ -194,110 +203,208 @@ public class C8JEmulator {
                 break;
             case 0x3:
                 System.out.printf("3XNN: skip if VX is NN");
-                x = (int)decodedInstructions[1];
-                n = (byte)(instruction & 0xFF);
-                System.out.printf("vx=%x ? n=%x \n", vRegisters[x],n);
-                if(vRegisters[x] == n){System.out.printf("skipped\n");
-                    programCounter += INSTRUCTION_WIDTH; //pc already advanced at fetch, advance again here.
+                x = (int) decodedInstructions[1];
+                n = (byte) (instruction & 0xFF);
+                System.out.printf("vx=%x ? n=%x \n", vRegisters[x], n);
+                if (vRegisters[x] == n) {
+                    System.out.printf("skipped\n");
+                    programCounter += INSTRUCTION_WIDTH; // pc already advanced at fetch, advance again here.
                 }
                 break;
             case 0x4:
                 System.out.printf("4XNN: skip if VX not NN");
-                x = (int)decodedInstructions[1];
-                n = (byte)(instruction & 0xFF);
-                System.out.printf("vx=%x ? n=%x \n", vRegisters[x],n);
-                if(vRegisters[x] != n){System.out.printf("skipped\n");
-                    programCounter += INSTRUCTION_WIDTH; 
+                x = (int) decodedInstructions[1];
+                n = (byte) (instruction & 0xFF);
+                System.out.printf("vx=%x ? n=%x \n", vRegisters[x], n);
+                if (vRegisters[x] != n) {
+                    System.out.printf("skipped\n");
+                    programCounter += INSTRUCTION_WIDTH;
                 }
                 break;
             case 0x5:
                 System.out.printf("5XY0: skip if VX is VY");
-                x = (int)decodedInstructions[1];
-                y = (int)decodedInstructions[2];
-                System.out.printf("vx=%x ? vy=%x \n", vRegisters[x],vRegisters[y]);
-                if(vRegisters[x]== vRegisters[y]){System.out.printf("skipped\n");
-                    programCounter += INSTRUCTION_WIDTH; 
+                x = (int) decodedInstructions[1];
+                y = (int) decodedInstructions[2];
+                System.out.printf("vx=%x ? vy=%x \n", vRegisters[x], vRegisters[y]);
+                if (vRegisters[x] == vRegisters[y]) {
+                    System.out.printf("skipped\n");
+                    programCounter += INSTRUCTION_WIDTH;
                 }
                 break;
             case 0x6:
                 System.out.printf("6XNN: set VX = NN\n");
-                x = (int)decodedInstructions[1];
-                n = (byte)(instruction & 0xFF);
+                x = (int) decodedInstructions[1];
+                n = (byte) (instruction & 0xFF);
                 vRegisters[x] = n;
-                System.out.printf("v[%d] = %x now\n",x,n);
+                System.out.printf("v[%d] = %x now\n", x, n);
                 break;
             case 0x7:
                 System.out.printf("7XNN: VX += NN\n");
-                x = (int)decodedInstructions[1];
-                n = (byte)(instruction & 0xFF);
+                x = (int) decodedInstructions[1];
+                n = (byte) (instruction & 0xFF);
                 vRegisters[x] += n;
-                System.out.printf("v[%d] = %x now\n",x,n);
+                System.out.printf("v[%d] = %x now\n", x, n);
                 break;
-            case 0x8:
-                if(decodedInstructions[3] == 0x0){
+            case 0x8://TODO fixme
+                if (decodedInstructions[3] == 0x0) {
                     System.out.println("8XY0: VX = value of VY");
-                }else if(decodedInstructions[3] == 0x1){
-                    
-                }else if(decodedInstructions[3] == 0x2){
-                    
-                }else if(decodedInstructions[3] == 0x3){
-                    
-                }else if(decodedInstructions[3] == 0x4){
-                    
-                }else if(decodedInstructions[3] == 0x5){
-                    
-                }else if(decodedInstructions[3] == 0x6){
-                    
-                }else if(decodedInstructions[3] == 0x7){
-                    
-                }else if(decodedInstructions[3] == 0xE){
-                    
+                    x = (int) decodedInstructions[1];
+                    y = (int) decodedInstructions[2];
+                    vRegisters[x] = vRegisters[y];
+                    System.out.printf("v[%d] = v[%d] now = %x %x\n", x, y, vRegisters[x], vRegisters[y]);
+
+                } else if (decodedInstructions[3] == 0x1) {
+                    System.out.println("8XY1: VX = VX | VY");
+                    x = (int) decodedInstructions[1];
+                    y = (int) decodedInstructions[2];
+                    vRegisters[x] |= vRegisters[y];
+                    System.out.printf("v[%x] = v[%x] or v[%x] = %x\n", x, x, y, vRegisters[x]);
+
+                } else if (decodedInstructions[3] == 0x2) {
+                    System.out.println("8XY1: VX = VX & VY");
+                    x = (int) decodedInstructions[1];
+                    y = (int) decodedInstructions[2];
+                    vRegisters[x] &= vRegisters[y];
+                    System.out.printf("v[%x] = v[%x] and v[%x] = %x\n", x, x, y, vRegisters[x]);
+
+                } else if (decodedInstructions[3] == 0x3) {
+                    System.out.println("8XY1: VX = VX xor VY");
+                    x = (int) decodedInstructions[1];
+                    y = (int) decodedInstructions[2];
+                    vRegisters[x] ^= vRegisters[y];
+                    System.out.printf("v[%x] = v[%x] xor v[%x] = %x\n", x, x, y, vRegisters[x]);
+                } else if (decodedInstructions[3] == 0x4) {
+                    System.out.println("8XY4: VX = VX + VY, carry");
+                    x = (int) decodedInstructions[1];
+                    y = (int) decodedInstructions[2];
+                    int vx = vRegisters[x];
+                    int vy = vRegisters[y];
+                    int sum = vx + vy;
+                    if (sum > 0xFF) { // 255
+                        vRegisters[0xf] = 1;
+                    } else {
+                        vRegisters[0xf] = 0;
+                    }
+                    vRegisters[x] += vRegisters[y];
+                    vRegisters[0xf] = 0;
+                    System.out.printf("v[%x] = v[%x] + v[%x] = %x, carry = %x\n", x, x, y, vRegisters[x],
+                            vRegisters[0xf]);
+
+                } else if (decodedInstructions[3] == 0x5) {
+                    System.out.println("8XY5: VX=VX-VY");
+                    x = (int) decodedInstructions[1];
+                    y = (int) decodedInstructions[2];
+                    if (vRegisters[x] > vRegisters[y]) {
+                        vRegisters[0xf] = 1;
+                    } else {
+                        vRegisters[0xf] = 0;
+                    }
+                    vRegisters[x] = (byte) (vRegisters[x] - vRegisters[y]);
+                    System.out.printf("v[%x] = v[%x] - v[%x] = %x, carry = %x\n", x, x, y, vRegisters[x],
+                            vRegisters[0xf]);
+
+                    System.out.printf("\n");
+                } else if (decodedInstructions[3] == 0x6) { // Ambiguous instruction, doing original!
+                    System.out.println("8XY6: VX shiftRight");
+                    x = (int) decodedInstructions[1];
+                    y = (int) decodedInstructions[2];
+                    vRegisters[x] = vRegisters[y]; // this doesn't happen in newer impls
+                    if ((vRegisters[x] & 0x01) == 0x01) {
+                        vRegisters[0xf] = 1;
+                    } else {
+                        vRegisters[0xf] = 0;
+                    }
+                    vRegisters[x] = (byte) (vRegisters[x] >> 1);
+                    System.out.printf("VX now = %x, VF = %x\n", vRegisters[x], vRegisters[0xf]);
+                } else if (decodedInstructions[3] == 0x7) {
+                    System.out.println("8XY5: VX=VY-VX");
+                    x = (int) decodedInstructions[1];
+                    y = (int) decodedInstructions[2];
+                    if (vRegisters[y] > vRegisters[x]) {
+                        vRegisters[0xf] = 1;
+                    } else {
+                        vRegisters[0xf] = 0;
+                    }
+                    vRegisters[x] = (byte) (vRegisters[y] - vRegisters[x]);
+                    System.out.printf("v[%x] = v[%x] - v[%x] = %x, carry = %x\n", x, y, x, vRegisters[x],
+                            vRegisters[0xf]);
+
+                } else if (decodedInstructions[3] == 0xE) {/// Ambiguous instruction, doing original!
+                    System.out.println("8XYE: VX shiftLeft");
+                    x = (int) decodedInstructions[1];
+                    y = (int) decodedInstructions[2];
+                    vRegisters[x] = vRegisters[y]; // this doesn't happen in newer impls
+                    if ((vRegisters[x] & 0x80) == 0x80) {
+                        vRegisters[0xf] = 1;
+                    } else {
+                        vRegisters[0xf] = 0;
+                    }
+                    vRegisters[x] = (byte) (vRegisters[x] << 1);
+                    System.out.printf("VX now = %x, VF = %x\n", vRegisters[x], vRegisters[0xf]);
+                } else {
+                    throw new Exception(String.format("%x decoded intr unimplemented %n", instruction)); // TODO make
+                                                                                                         // custom
+                                                                                                         // exception
+
                 }
-                
 
                 break;
             case 0x9:
                 System.out.printf("9XY0: skip if VX not VY");
-                x = (int)decodedInstructions[1];
-                y = (int)decodedInstructions[2];
-                System.out.printf("vx=%x ? vy=%x \n", vRegisters[x],vRegisters[y]);
-                if(vRegisters[x] != vRegisters[y]){System.out.printf("skipped\n");
-                    programCounter += INSTRUCTION_WIDTH; 
+                x = (int) decodedInstructions[1];
+                y = (int) decodedInstructions[2];
+                System.out.printf("vx=%x ? vy=%x \n", vRegisters[x], vRegisters[y]);
+                if (vRegisters[x] != vRegisters[y]) {
+                    System.out.printf("skipped\n");
+                    programCounter += INSTRUCTION_WIDTH;
                 }
                 break;
             case 0xA:
                 System.out.printf("ANNN: Set I to NNN");
-                iRegister = (short)(instruction & 0xFFF);
-                System.out.printf("I = %x now\n",iRegister);
+                iRegister = (short) (instruction & 0x0FFF);
+                System.out.printf("I = %x now\n", iRegister);
                 break;
             case 0xB:
-            break;
+                // Ambiguous instruction!
+                System.out.printf("BNNN: jump w/ offset: V0 + NNN\n");
+                byte v0 = vRegisters[0x0];
+                short addr = (short) (instruction & 0x0FFF);
+                programCounter = v0 + addr;
+                System.out.println("pc is now =" + programCounter);
+                break;
             case 0xC:
-            break;
+                System.out.printf("CXNN: random-num AND NN into VX\n");
+                Random randomizer = new Random();
+                int randInt = randomizer.nextInt();
+                byte randValue = (byte) ((randInt & 0xFF) & (instruction & 0xFF));
+                vRegisters[(int) decodedInstructions[1]] = randValue;
+                System.out.printf("rand value in VX = %x\n", randValue);
+                break;
             case 0xD:
-                
-                
+
                 System.out.printf("DXYN: draw sprite VXVY, N bytes at I\n");
-                //Draw a sprite at position VX, VY with N bytes of sprite data starting at the address stored in I
-                //Set VF to 01 if any set pixels are changed to unset, and 00 otherwise
-                x = (int)decodedInstructions[1];
-                y = (int)decodedInstructions[2];
+                // Draw a sprite at position VX, VY with N bytes of sprite data starting at the
+                // address stored in I
+                // Set VF to 01 if any set pixels are changed to unset, and 00 otherwise
+                x = (int) decodedInstructions[1];
+                y = (int) decodedInstructions[2];
                 n = decodedInstructions[3];
 
                 // sprite's start pos can wrap around...
-                int posX = (vRegisters[x] & (DISP_W-1));
+                int posX = (vRegisters[x] & (DISP_W - 1));
                 int posY = (vRegisters[y] % DISP_H); // vy & 31 is another way...
-                short addr = iRegister;
-                
+                short address = iRegister;
+
                 vRegisters[0xf] = 0;
 
                 int spriteLineIdx = 0;
                 int displayLineIdx = posY + spriteLineIdx;
-                while(spriteLineIdx < n && displayLineIdx < DISP_H){
-                    long spriteLine = (long)memory[addr + spriteLineIdx];
-                                        
-                    spriteLine = (spriteLine & 0xFF) << 56; //&FF is to prevent sign extension, what a pain 
-                    spriteLine = spriteLine >>> posX;       // again, prevent sign extension, TODO review elsewhere.
+                while (spriteLineIdx < n && displayLineIdx < DISP_H) {
+                    long spriteLine = (long) memory[address + spriteLineIdx];
+
+                    spriteLine = (spriteLine & 0xFF) << 56; // &FF is to nullify sign extension that might have happened
+                                                            // in the above case
+                    spriteLine = spriteLine >>> posX; // again, prevent sign extension
 
                     long originalDisplayLine = displayLines[displayLineIdx];
                     displayLines[displayLineIdx] ^= spriteLine;
@@ -310,27 +417,102 @@ public class C8JEmulator {
                 }
 
                 System.out.println("display rendered");
-                
-               
-            break;
+                break;
+
             case 0xE:
-            break; 
+                x = (int) (decodedInstructions[1]);
+                if (decodedInstructions[2] == 0x9 && decodedInstructions[3] == 0xE) {
+                    System.out.println("skip if key pressed EX9E");
+                    byte keyByte = (byte) (vRegisters[x] & 0x0F);
+                    if (keyByte == keyPress) {
+                        programCounter += INSTRUCTION_WIDTH;
+                        System.out.println("skipping next instr");
+                    }
+
+                } else if (decodedInstructions[2] == 0xA && decodedInstructions[3] == 0x1) {
+                    System.out.println("skip if key pressed NOT in vx EXA1");
+                    byte keyByte = (byte) (vRegisters[x] & 0x0F);
+                    if (keyByte != keyPress) {
+                        programCounter += INSTRUCTION_WIDTH;
+                        System.out.println("skipping next instr");
+                    }
+                } else {
+                    throw new Exception(String.format("%x decoded intr unimplemented %n", instruction)); // TODO make
+                                                                                                         // custom
+                                                                                                         // exception
+                }
+
+                break;
             case 0xF:
                 System.out.println("FXNN instr decoded");
+                x = (int) (decodedInstructions[1]);
+                if (decodedInstructions[2] == 0x0 && decodedInstructions[3] == 0x7) {
+                    vRegisters[x] = (byte) (delayTimer & 0xFF);
+                } else if (decodedInstructions[2] == 0x1 && decodedInstructions[3] == 0x5) {
+                    delayTimer = (byte) (vRegisters[x] & 0xFF);
+                } else if (decodedInstructions[2] == 0x1 && decodedInstructions[3] == 0x8) {
+                    soundTimer = (byte) (vRegisters[x] & 0xFF);
+                }else if (decodedInstructions[2] == 0x1 && decodedInstructions[3] == 0xE) {
+                    iRegister += (short) (vRegisters[x] & 0xFF); //undocumented detail, vf not affected here ideally...
+                }else if (decodedInstructions[2] == 0x0 && decodedInstructions[3] == 0xA) {//get key
+                    //timers keep running, wait for key input.... 
+                    // either BLOCK here, or decr pc and keep going.... 
+                    //TODO finish me
+                    // current decision: will go back on PC for now
+                    programCounter -= INSTRUCTION_WIDTH;
+                }else if(decodedInstructions[2] == 0x2 && decodedInstructions[3] == 0x9){
+                    byte vx = vRegisters[x];
+                    iRegister = (short) ((int) FONT_MEM_BASE_IDX + (5 * (int) vx));
+                }else if(decodedInstructions[2] == 0x3 && decodedInstructions[3] == 0x3){
+                    //BCD VX at I
+                    int vx = (int)vRegisters[x];
+                    memory[iRegister + 0] = (byte)(vx / 100);
+                    memory[iRegister + 1] = (byte)((vx % 100) / 10);
+                    memory[iRegister + 2] = (byte)(vx % 10);                    
+                    
+                }else if(decodedInstructions[2] == 0x5 && decodedInstructions[3] == 0x5){//ambi
+                    System.out.println("store to memory[Iregister] from v0 to vx incl");
+                    x = decodedInstructions[1] & 0xFF;
+                    for(int idx = 0; idx <= x; idx++){
+                        memory[iRegister + idx] = vRegisters[idx];
+                    }
+
+                }else if(decodedInstructions[2] == 0x6 && decodedInstructions[3] == 0x5){//ambi
+                    System.out.println("load from memory from v0 to vx incl");
+                    x = decodedInstructions[1] & 0xFF;
+                    for(int idx = 0; idx <= x; idx++){
+                       vRegisters[idx] = memory[iRegister + idx];
+                    }
+                    //modern impl, I register remains unchanged here.... legacy would require I to update with idx
+                }  else {
+                    throw new Exception(String.format("%x decoded intr unimplemented %n", instruction)); // TODO make
+                                                                                                         // custom
+                                                                                                         // exception
+                }
                 break;
             default:
-                System.out.printf("%x decoded intr unimplemented %n", instruction);
-                break;
+                throw new Exception(String.format("%x decoded intr unimplemented %n", instruction));// TODO choose
+                                                                                                    // approp. ex
         }
     }
 
-    private void step() {
+    private void step() throws Exception {
+       
         execute(decode(fetch()));
+        
+    }
+    
+    private void runConsole() throws Exception{
+        
+        while (true) {
+            step();
+        }
     }
 
-    private void run() {
+    private void run() throws Exception {
         int counter = 0;
-        while (counter++ < 13) {
+        while (counter++ < 4096) {
+        //while (true) {
             step();
         }
     }
@@ -389,6 +571,13 @@ public class C8JEmulator {
         }
     }
 
+    public void consumeKeypress(String keyString){
+        keyString = keyString.toLowerCase();
+        keyString = keyString.substring(0,1);
+        keyPress = (byte)Byte.parseByte(keyString);
+        System.out.println("keypress = %x" + keyPress);
+    }
+
     public static void main(String[] args) {
         System.out.println("Running C8MJ... | Current time = " + LocalDateTime.now());
         
@@ -425,11 +614,21 @@ public class C8JEmulator {
                     replLoop = false;
                     break;
                 case 's': // step
-                    emu.step();
+                    try {
+                        emu.step();
+                    } catch (Exception e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
                     //System.out.println(emu);
                     break;
                 case 'r': // run
-                    emu.run();
+                    try {
+                        emu.run();
+                    } catch (Exception e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
                     break;
                 case 'g': // show regs
                     System.out.println(emu.dumpRegs());
