@@ -48,9 +48,11 @@ public class C8JEmulator {
     
     
     // This welcome screen program is always loaded by default
-    public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/c8splash.ch8"; // TODO this path can be
+    //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/c8splash.ch8"; // TODO this path can be
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/ibmlogo.ch8"; // TODO this path can be
-                                                                                             // done better
+    //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/persontest.ch8"; // TODO this path can be
+    public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/kbtest.ch8"; // TODO this path can be
+                                                                                                        // done better
     public static HexFormat HEX_LINEAR_FORMATTER = HexFormat.ofDelimiter(":").withUpperCase().withPrefix("0x");
     private static Logger logger = Logger.getLogger("dev.sp.c8j");
     public C8JEmulator() throws IOException {
@@ -72,7 +74,7 @@ public class C8JEmulator {
         decodedInstructions = new byte[4];
 
         displayLines = new long[DISP_H]; //long's width = 64
-        keyPress = 'X'; //keypad should be classed 
+        keyPress = 'x'; //keypad should be classed 
     }
 
     private void readCh8Binary(Path path) throws IOException {
@@ -245,7 +247,7 @@ public class C8JEmulator {
                 vRegisters[x] += n;
                 System.out.printf("v[%d] = %x now\n", x, n);
                 break;
-            case 0x8://TODO fixme
+            case 0x8:
                 if (decodedInstructions[3] == 0x0) {
                     System.out.println("8XY0: VX = value of VY");
                     x = (int) decodedInstructions[1];
@@ -441,7 +443,7 @@ public class C8JEmulator {
                                                                                                          // custom
                                                                                                          // exception
                 }
-
+                keyPress = 'x'; // reset keypress !!!
                 break;
             case 0xF:
                 System.out.println("FXNN instr decoded");
@@ -502,12 +504,7 @@ public class C8JEmulator {
         
     }
     
-    private void runConsole() throws Exception{
-        
-        while (true) {
-            step();
-        }
-    }
+   
 
     private void run() throws Exception {
         int counter = 0;
@@ -516,7 +513,13 @@ public class C8JEmulator {
             step();
         }
     }
+    
+    public static void runConsole(C8JEmulator emu) throws Exception {
+        
+        throw new Exception("runConsole() unimplemented");
+    }
 
+    
     public String dumpString() {//todo:redo this... stick to 1 convention for hex and decimal printing... see egs online
         StringBuilder sb = new StringBuilder(); 
 
@@ -575,7 +578,7 @@ public class C8JEmulator {
         keyString = keyString.toLowerCase();
         keyString = keyString.substring(0,1);
         keyPress = (byte)Byte.parseByte(keyString);
-        System.out.println("keypress = %x" + keyPress);
+        System.out.printf("keypress set = %x\n", keyPress);
     }
 
     public static void main(String[] args) {
@@ -600,15 +603,23 @@ public class C8JEmulator {
         Scanner scanner = new Scanner(System.in);
         boolean replLoop = true;
         char inChar = 'z';
+        char subChar = 'x';
         while (replLoop) {
             System.out.print("c8j>");
-            inChar = scanner.next().charAt(0);
-            
+            String consoleInput = scanner.next();
+            inChar = consoleInput.charAt(0);
+            if(consoleInput.length() > 1){
+                subChar = consoleInput.charAt(1);
+            }
             //System.out.printf("read ch = %c \n", inChar);
+            //System.out.printf("read ch2 = %c \n", subChar);
 
             switch (inChar) {
                 case 'h':
-                    System.out.println("q=quit,s=step,r=run,g=registers,m=memory,p=prog-counter,d=display");//TODO rethink these..
+                    System.out.println("q=quit,s=step,r=run,g=registers,m=memory,p=prog-counter,d=display,k[x]=key_in-x,f=run-till-next-draw-call");//TODO rethink these..
+                    break;
+                case 'k':
+                    emu.consumeKeypress(String.valueOf(subChar));
                     break;
                 case 'q': // quit
                     replLoop = false;
@@ -622,9 +633,23 @@ public class C8JEmulator {
                     }
                     //System.out.println(emu);
                     break;
-                case 'r': // run
+                case 'f': //reach next draw sprite instruction...
                     try {
-                        emu.run();
+                        byte currentInstruction = emu.decodedInstructions[0];
+                        while(currentInstruction != 0xD){
+                            emu.step();
+                            currentInstruction = emu.decodedInstructions[0];
+                        }
+                        emu.step();//this is invoking the draw then...
+
+                    } catch (Exception e) {
+                        // TODO: handle exception
+                        e.printStackTrace();
+                    }
+                    break;
+                case 'r': // run (at the moment "resumes".... if you stepped a bit that is preserved state..)
+                    try {
+                        C8JEmulator.runConsole(emu);
                     } catch (Exception e) {
                         // TODO Auto-generated catch block
                         e.printStackTrace();
