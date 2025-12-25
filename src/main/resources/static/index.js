@@ -13,10 +13,19 @@ const EMU_STATUSES = {
 };
 function Initialize() {
 	const canvas = document.getElementById("main-canvas");
-	canvas.width = DISPLAY_W * DISPLAY_SCALE;
+    canvas.width = DISPLAY_W * DISPLAY_SCALE;
 	canvas.height = DISPLAY_H * DISPLAY_SCALE;
     const ctx = canvas.getContext("2d");
-
+    const img = new Image();
+    img.src = "notlogo.png";
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+        ctx.drawImage(img, 0, 0);
+    };
+    ctx.scale(DISPLAY_SCALE,DISPLAY_SCALE);
+    ctx.imageSmoothingEnabled = false;
+    
+    /*
 	//BG
 	ctx.fillStyle = `rgb(
         ${OFF_RGB.R},
@@ -31,8 +40,10 @@ function Initialize() {
         ${ON_RGB.G},
         ${ON_RGB.B}
         )`;
-    ctx.fillRect(12, 12, DISPLAY_SCALE, DISPLAY_SCALE);
-
+    ctx.fillRect(1, 1, canvas.width -1, canvas.height-1);
+    */
+    
+    
 	const status = document.getElementById("player-status-text");
 	status.innerText = `STATUS: ${EMU_STATUSES.STOPPED}`;
 
@@ -52,6 +63,21 @@ function Initialize() {
 	clientDateTime.innerText = formattedDateTime;
 
 
+}
+function RandomizeDisplay(){
+    const randRGB = { R: Math.floor(Math.random() * 255), G: Math.floor(Math.random() * 255), B: Math.floor(Math.random() * 255) }
+
+    const canvas = document.getElementById("main-canvas");
+    const ctx = canvas.getContext("2d");
+    const dispImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    //const dispImageData = ctx.createImageData(canvas.width, canvas.height);
+    const data = dispImageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+        data[i] = randRGB.R;
+        data[i + 1] = randRGB.G;
+        data[i + 2] = randRGB.B;
+    }
+    ctx.putImageData(dispImageData, 0, 0);
 }
 
 function Start(){
@@ -143,6 +169,10 @@ document.querySelectorAll("form").forEach(form => form.addEventListener('submit'
 document.getElementById("start-button").addEventListener('click', () => connect());
 document.getElementById("stop-button").addEventListener('click', () => disconnect());
 document.getElementById("send-client-message").addEventListener('click', () => sendClientMessage());
+
+
+
+
 /*
  (function () {
   "use strict";
