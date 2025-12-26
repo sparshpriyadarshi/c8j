@@ -1,7 +1,12 @@
 "use strict";
 
 console.log("index js loads");
-
+const CLIENT_CANARY_MESSAGE = {
+    "id": crypto.randomUUID(),
+    "timestamp": new Date().getTime(),
+    "type":"CANARY", //CONTROL,KEYPAD,CANARY ?
+    "content":"client message content"
+};
 const DISPLAY_W = 64
 const DISPLAY_H = 32
 const DISPLAY_SCALE = 10
@@ -11,6 +16,7 @@ const EMU_STATUSES = {
 	STARTED: "STARTED",
 	STOPPED: "STOPPED"
 };
+
 function Initialize() {
 	const canvas = document.getElementById("main-canvas");
     canvas.width = DISPLAY_W * DISPLAY_SCALE;
@@ -53,6 +59,11 @@ function Initialize() {
 	stopButton.addEventListener("click", Stop);
 	const clearButton = document.getElementById("clear-button");
 	clearButton.addEventListener("click", ClearLogs);
+    const keypadButtons = document.getElementById("keypad-section").getElementsByClassName("keypad");
+    for(const btn of keypadButtons){
+        btn.addEventListener("click", (e) => SendKeypadEvent(e.target.id));
+    }
+   
 
 	let currentDateTime = new Date();
 	// DD-MM-YYYY HH:MM:SS
@@ -93,6 +104,7 @@ function Stop(){
 	const status = document.getElementById("player-status-text");
 	status.innerText = `STATUS: ${EMU_STATUSES.STOPPED}`;
 }
+
 function ClearLogs(){
 	console.log("Logs cleared...");
 
@@ -100,6 +112,11 @@ function ClearLogs(){
 	logs.innerHTML = "";
 
 }
+
+function SendKeypadEvent(idValue){
+    console.log("keypad event = " + idValue);
+}
+
 Initialize();
 
 
@@ -132,8 +149,13 @@ stompClient.onStompError = (frame) => {
 };
 
 function setConnected(connected) {
+    //TODO this funcs usages need to be decoupled from messaging to a better place...
     document.getElementById("start-button").disabled = connected;
     document.getElementById("stop-button").disabled = !connected;
+    // const keypadButtons = document.getElementById("keypad-section").getElementsByClassName("keypad");
+    // for(const btn of keypadButtons){
+    //     btn.disabled = !connected;
+    // }
     if (connected) {
         document.getElementById("c8j-messages-container").style.display = "block";
     }
@@ -148,15 +170,16 @@ function connect() {
 }
 
 function disconnect() {
-    stompClient.deactivate();
     setConnected(false);
     console.log("Disconnected");
+    stompClient.deactivate();
 }
 
-function sendClientMessage() {
+function sendClientMessage(msg) { //TODO: broken esp on server
+    msg = msg || CLIENT_CANARY_MESSAGE;
     stompClient.publish({
         destination: "/app/c8j-server",
-        body: JSON.stringify({'id':new Date().getTime().toString(),'type': 'base','content':'client message body'})
+        body: JSON.stringify(msg)
     });
 }
 
@@ -168,7 +191,8 @@ function showC8JMessage(message) {
 document.querySelectorAll("form").forEach(form => form.addEventListener('submit', (e) => e.preventDefault()));
 document.getElementById("start-button").addEventListener('click', () => connect());
 document.getElementById("stop-button").addEventListener('click', () => disconnect());
-document.getElementById("send-client-message").addEventListener('click', () => sendClientMessage());
+document.getElementById("send-client-message-canary").addEventListener('click', () => sendClientMessage());
+document.getElementById("send-client-message1").addEventListener('click', () => sendClientMessage({"sampleclientmessage1":"hi"}));
 
 
 
