@@ -17,7 +17,7 @@ public class C8JController {
 
         System.out.printf("Server received: %s\n", message.toString());
 
-        C8JClientMessage resp = new C8JClientMessage(message.getId(), System.currentTimeMillis(), message.getType(),
+        C8JClientMessage resp = new C8JClientMessage(message.getClientId(), System.currentTimeMillis(), message.getType(),
                 String.format("server response to %s", message.toString()));
         return resp;
     }

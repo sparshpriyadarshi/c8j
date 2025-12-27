@@ -4,39 +4,97 @@ public class C8JClientMessage {
     private enum Type{
         CONTROL,KEYPAD,CANARY
     }
-    private String id;//TODO: reconsider this type for uuid?..
+    private String clientId;//TODO: reconsider this type for uuid?..
     private long timestamp;
     private Type type;
     private String content;
     
-    
-    public C8JClientMessage(String id, long timestamp, Type type, String content){
-        this.id = id;
+
+    public C8JClientMessage(String clientId, long timestamp, Type type, String content){
+        this.clientId = clientId;
         this.timestamp = timestamp;
         this.type = type;
         this.content = content;
     }
 
 
-    @Override
-    public String toString() {
-        return "C8JClientMessage [id=" + id + ", timestamp=" + timestamp + ", type=" + type + ", content=" + content
-                + "]";
-    }
 
 
     /* boilers for spring, jackson/jaxb mainly...*/
+    public C8JClientMessage(){
+        
+    }
+
+
+
+
+    public String getClientId() {
+        return clientId;
+    }
+
+
+
+
+    public void setClientId(String clientId) {
+        this.clientId = clientId;
+    }
+
+
+
+
+    public long getTimestamp() {
+        return timestamp;
+    }
+
+
+
+
+    public void setTimestamp(long timestamp) {
+        this.timestamp = timestamp;
+    }
+
+
+
+
+    public Type getType() {
+        return type;
+    }
+
+
+
+
+    public void setType(Type type) {
+        this.type = type;
+    }
+
+
+
+
+    public String getContent() {
+        return content;
+    }
+
+
+
+
+    public void setContent(String content) {
+        this.content = content;
+    }
+
+
+
 
     @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + ((id == null) ? 0 : id.hashCode());
+        result = prime * result + ((clientId == null) ? 0 : clientId.hashCode());
         result = prime * result + (int) (timestamp ^ (timestamp >>> 32));
         result = prime * result + ((type == null) ? 0 : type.hashCode());
         result = prime * result + ((content == null) ? 0 : content.hashCode());
         return result;
     }
+
 
 
 
@@ -49,10 +107,10 @@ public class C8JClientMessage {
         if (getClass() != obj.getClass())
             return false;
         C8JClientMessage other = (C8JClientMessage) obj;
-        if (id == null) {
-            if (other.id != null)
+        if (clientId == null) {
+            if (other.clientId != null)
                 return false;
-        } else if (!id.equals(other.id))
+        } else if (!clientId.equals(other.clientId))
             return false;
         if (timestamp != other.timestamp)
             return false;
@@ -68,39 +126,13 @@ public class C8JClientMessage {
 
 
 
-    
-    public C8JClientMessage(){  }
-
-    public String getId() {
-        return id;
+    @Override
+    public String toString() {
+        return "C8JClientMessage [clientId=" + clientId + ", timestamp=" + timestamp + ", type=" + type + ", content="
+                + content + "]";
     }
 
-    public void setId(String id) {
-        this.id = id;
-    }
 
-    public long getTimestamp() {
-        return timestamp;
-    }
 
-    public void setTimestamp(long timestamp) {
-        this.timestamp = timestamp;
-    }
-
-    public Type getType() {
-        return type;
-    }
-
-    public void setType(Type type) {
-        this.type = type;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
-    }
     
 }
