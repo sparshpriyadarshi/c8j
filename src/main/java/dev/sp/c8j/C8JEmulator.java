@@ -13,8 +13,9 @@ import java.util.Scanner;
 import java.util.Stack;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 /**
  * 
  * A CHIP-8 emulator
@@ -23,9 +24,10 @@ public class C8JEmulator {
     enum Key {//TODO use this
         ZERO, ONE, TWO, THREE, FOUR, FIVE, SIX, SEVEN, EIGHT, NINE, A, B, C, D, E, F
     }
-    enum STATE {
-        RUNNING, PAUSED, STOPPED, ERROR
+    enum EMU_STATE {
+        INITIALIZED, RUNNING, STEPPING, PAUSED, STOPPED, ERROR
     }
+
     private static int MAX_ADDRESSIBLE_BYTES = 4096; // 0x1000
     private static int FONT_MEM_BASE_IDX = 80;       // 0x050
     private static int FONT_MEM_LAST_IDX = 159;      // 0x09F
@@ -41,7 +43,7 @@ public class C8JEmulator {
     private static int DISP_H = 32;
     private static int DISP_RATE = 60;               // isn't really defined, but good to sync with other timers...
     
-
+    public EMU_STATE state;
     private byte[] program;                          // Just a program, not in memory...
     private byte[] memory;                           // 
     private byte[] vRegisters;                       // V registers 8 bit
@@ -63,13 +65,14 @@ public class C8JEmulator {
     private long instructionCounter; //mainly for debugging
 
     // This welcome screen program is always loaded by default
-    public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/c8splash.ch8"; 
-    //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/ibmlogo.ch8"; 
+    //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/c8splash.ch8"; 
+    public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/ibmlogo.ch8"; 
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/persontest.ch8"; 
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/kbtest.ch8"; // TODO this path can be
                                                                                                         // done better
     public static HexFormat HEX_LINEAR_FORMATTER = HexFormat.ofDelimiter(":").withUpperCase().withPrefix("0x");
-    //private static Logger logger = Logger.getLogger("dev.sp.c8j");//TODO
+    Logger logger = LoggerFactory.getLogger(LoggingController.class);
+    
     public C8JEmulator() throws IOException {
         // initialize empty registers V0 to VF, I, Stack
         vRegisters = new byte[16];
@@ -92,6 +95,7 @@ public class C8JEmulator {
         keyPress = 'x'; //keypad should be classed 
 
         instructionCounter = 0;
+        state = EMU_STATE.INITIALIZED;
     }
 
     private void readCh8Binary(Path path) throws IOException {
@@ -159,7 +163,7 @@ public class C8JEmulator {
         instruction = (short) (instruction << Byte.SIZE);
         instruction = (short) (instruction | memory[programCounter + 1] & 0xFF);
 
-        //System.out.printf("Fetched instruction@%x =%x\n",programCounter, instruction);
+        logger.debug("Fetched instruction@PC=%4x = %4x\n",programCounter, instruction);
 
         programCounter += INSTRUCTION_WIDTH;
 
@@ -188,6 +192,7 @@ public class C8JEmulator {
         assert decodedInstructions.length == 4 : "instruction doesn't have 4 nibbles" + decodedInstructions;
 
         //System.out.printf("decoded instr = %x%x%x%x\n", decodedInstructions[0], decodedInstructions[1],decodedInstructions[2], decodedInstructions[3]);
+        logger.debug(String.format("decoded instr = %x%x%x%x\n", decodedInstructions[0], decodedInstructions[1],decodedInstructions[2], decodedInstructions[3]));
         int x, y;
         byte n;
         switch (decodedInstructions[0]) {// TODO: refactor this big switch and dcoder better....
@@ -224,7 +229,7 @@ public class C8JEmulator {
                 n = (byte) (instruction & 0xFF);
                 //System.out.printf("vx=%x ? n=%x \n", vRegisters[x], n);
                 if (vRegisters[x] == n) {
-                    System.out.printf("skipped\n");
+                    //System.out.printf("skipped\n");
                     programCounter += INSTRUCTION_WIDTH; // pc already advanced at fetch, advance again here.
                 }
                 break;
@@ -431,7 +436,7 @@ public class C8JEmulator {
                     displayLineIdx++;
                 }
 
-                //System.out.println("frame rendered");
+                System.out.println("Display rendered");
                 break;
 
             case 0xE:
@@ -459,7 +464,7 @@ public class C8JEmulator {
                 keyPress = 'x'; // reset keypress !!!
                 break;
             case 0xF:
-                System.out.println("FXNN instr decoded");
+                //System.out.println("FXNN instr decoded");
                 x = (int) (decodedInstructions[1]);
                 if (decodedInstructions[2] == 0x0 && decodedInstructions[3] == 0x7) {
                     vRegisters[x] = (byte) (delayTimer & 0xFF);
@@ -511,15 +516,12 @@ public class C8JEmulator {
         }
     }
 
-    private void step() throws Exception {
-       
+    public void step() throws Exception {
         execute(decode(fetch()));
         instructionCounter++;
         
     }
     
-    
-
     private void run() throws Exception {
         int counter = 0;
         while (counter++ < 4096) {
@@ -528,7 +530,7 @@ public class C8JEmulator {
         }
     }
     
-    public static void runConsole(C8JEmulator emu) throws Exception {
+    public static void runConsoleConcurrent(C8JEmulator emu) throws Exception {
         assert emu != null;
 
         int instructionRate = INSTRUCTION_RATE;
@@ -600,11 +602,48 @@ public class C8JEmulator {
         }
         System.out.printf("instruction counter = %d\n",emu.instructionCounter);
     }
+
+    public byte[] getImageData(){
+        /// 
+        /// Reference: [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Pixel_manipulation_with_canvas)
+        /// 
+        /// The ImageData object represents the underlying pixel data of an area of a canvas object. 
+        /// Its data property returns a Uint8ClampedArray (or Float16Array if requested) 
+        /// which can be accessed to look at the raw pixel data; each pixel is represented by four one-byte values 
+        /// (red, green, blue, and alpha, in that order; that is, "RGBA" format). 
+        /// Each color component is represented by an integer between 0 and 255. 
+        /// Each component is assigned a consecutive index within the array, with the top left pixel's red component being at index 0 within the array. 
+        /// Pixels then proceed from left to right, then downward, throughout the array.
+        /// 
+        /// The Uint8ClampedArray contains height × width × 4 bytes of data, with index values ranging from 0 to (height × width × 4) - 1.
+        
+        byte[] uInt8ClampedArray = new byte[DISP_H * DISP_W * 4];
+        for (int i = 0; i < (DISP_H * DISP_W * 4) - 1; i += 4) {
+            // TODO: fix this, random color for now...
+            Random randomizer = new Random();
+            int randInt = randomizer.nextInt();
+            byte randValue = (byte) ((randInt & 0xFF) & (instruction & 0xFF));
+            
+            uInt8ClampedArray[i + 0] = (byte) randValue;
+            randInt = randomizer.nextInt();
+            randValue = (byte) ((randInt & 0xFF) & (instruction & 0xFF));
+            uInt8ClampedArray[i + 1] = (byte) randValue;
+            randInt = randomizer.nextInt();
+            randValue = (byte) ((randInt & 0xFF) & (instruction & 0xFF));
+            uInt8ClampedArray[i + 2] = (byte) randValue;
+
+            uInt8ClampedArray[i + 3] = (byte) 0xFF;
+
+        }
+        
+        return uInt8ClampedArray;
+    }
     
     public String dumpString() {//todo:redo this... stick to 1 convention for hex and decimal printing... see egs online
         StringBuilder sb = new StringBuilder(); 
 
         sb.append(String.format("Emulator Object: %n"));
+        sb.append(String.format("State: %s %n", state));
         sb.append(String.format("R- I Register: %d%n", iRegister));
 
         sb.append(String.format("R- V Registers: %n"));
@@ -666,11 +705,6 @@ public class C8JEmulator {
     public static void main(String[] args) {
         System.out.println("Running C8MJ... | Current time = " + LocalDateTime.now());
         
-        //TODO these
-        //logger.log(Level.ALL, "Running C8MJ...");
-        //logger.fine("doing stuff");
-        //logger.log(Level.FINE, "fine logger works");
-
         C8JEmulator emu;
         try {
             emu = new C8JEmulator();
@@ -734,7 +768,7 @@ public class C8JEmulator {
                     break;
                 case 'r': // run (at the moment "resumes".... if you stepped a bit that is preserved state..)
                     try {
-                        C8JEmulator.runConsole(emu);
+                        C8JEmulator.runConsoleConcurrent(emu);
                     } catch (Exception e) {
                         // TODO Auto-generated catch block
                         e.printStackTrace();

@@ -18,6 +18,12 @@
 <main>
     <noscript><h2 style="color: #ff0000">Seems your browser doesn't support Javascript! Please enable
     Javascript and reload this page!</h2></noscript>
+    
+    <p>
+        <canvas id="main-canvas">
+            C8J Display
+        </canvas>
+    </p>
     <p>
         <section id="keypad-section">
             <button class="keypad" id="1">1</button>
@@ -39,16 +45,12 @@
         </section>
     </p>
     <p>
-        <canvas id="main-canvas">
-            C8J Display
-        </canvas>
-    </p>
-    <p>
         <!--<form method="post" id="input-form"> -->
         <span id="player-status-text">emulator status</span><br/>
         <button id="start-button">START</button>
         <button id="pause-button">PAUSE</button>
         <button id="step-button">STEP</button>
+        <button id="request-frame-button">REQUEST-FRAME</button>
         <button id="resume-button">RESUME</button><br/>
         <button id="stop-button">STOP</button>
         <!-- <button id="send-client-message-canary">SEND CANARY</button>

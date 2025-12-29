@@ -1,8 +1,8 @@
 package dev.sp.c8j;
 
 public class C8JClientMessage {
-    private enum Type{
-        CONTROL,KEYPAD,CANARY
+    public enum Type{
+        CONTROL,KEYPAD,CANARY,FRAMEREQUEST
     }
     private String clientId;//TODO: reconsider this type for uuid?..
     private long timestamp;

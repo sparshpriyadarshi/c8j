@@ -1,20 +1,21 @@
 "use strict";
 
-console.log("index js loads");
-
 const DISPLAY_W = 64
 const DISPLAY_H = 32
-const DISPLAY_SCALE = 2
+const DISPLAY_SCALE = 10
 const OFF_RGB = { R:0,G:0,B:0}
 const ON_RGB = { R:200,G:220,B:255}
 const EMU_STATUSES = {
+    INITIALIZED:"INITIALIZED",
     RUNNING: "RUNNING",
+    STEPPING:"STEPPING",
     PAUSED: "PAUSED",
 	STOPPED: "STOPPED",
     ERROR: "ERROR"
 };
 const CLIENT_MESSAGE_TYPE = {
     CONTROL: "CONTROL",
+    FRAMEREQUEST:"FRAMEREQUEST",
     KEYPAD: "KEYPAD",
     CANARY: "CANARY"
 };
@@ -25,6 +26,7 @@ const CLIENT_CANARY_MESSAGE = {
     "type":CLIENT_MESSAGE_TYPE.CANARY, 
     "content":"client message content"
 };
+let frameIntervalID;
 function SetupCanvas(){
     const canvas = document.getElementById("main-canvas");
     canvas.width = DISPLAY_W * DISPLAY_SCALE;
@@ -67,21 +69,24 @@ function Initialize() {
 
 	const startButton = document.getElementById("start-button");
 	const stopButton = document.getElementById("stop-button");
+	const stepButton = document.getElementById("step-button");
 	const clearButton = document.getElementById("clear-button");
     const keypadButtons = document.getElementById("keypad-section").getElementsByClassName("keypad");
-    
+    const requestFrameButton = document.getElementById("request-frame-button");
    
 	startButton.addEventListener("click", SetStatusStart);
-    startButton.addEventListener('click', StompConnect);
+    startButton.addEventListener('click', StompConnect);//TODO: what the hell did u do
     stopButton.addEventListener('click', StompDisconnect);
-	stopButton.addEventListener("click", SetStatusStop);
+	stopButton.addEventListener("click", SetStatusStop);//TODO: what the hell did u do
     for(const btn of keypadButtons){
         btn.addEventListener("click", (e) => SendKeypadEvent(e.target.id));
     }
 	clearButton.addEventListener("click", ClearLogs);
 
     document.querySelectorAll("form").forEach(form => form.addEventListener('submit', (e) => e.preventDefault()));
-	
+	requestFrameButton.addEventListener("click", SendFrameRequest);
+    stepButton.addEventListener("click", SendStepEvent);
+
     let currentDateTime = new Date();
 	// DD-MM-YYYY HH:MM:SS
 	let formattedDate = `${currentDateTime.getDate()}-${currentDateTime.getMonth() + 1}-${currentDateTime.getFullYear()}`;
@@ -107,6 +112,11 @@ function RandomizeDisplay(){
         data[i + 2] = randRGB.B;
     }
     ctx.putImageData(dispImageData, 0, 0);
+}
+var framesCounter = 0;
+function RequestFrame(){
+    console.log(`client requested frames = ${framesCounter++}`);
+    
 }
 
 function SetStatusStart(){
@@ -136,9 +146,12 @@ function SendStartEvent(){
         "content":"START"
     };
     sendClientMessage(clientStartMessage);
+    //investigate if polling is really needed, maybe server sends to the existing websocket at its own discretion
+    //frameIntervalID ??= setInterval(SendFrameRequest, 1000);
+
 }
 function SendKeypadEvent(idValue){
-    console.log("keypad event = " + idValue);
+    console.log("keypad event = ", idValue);
     const clientKeypadMessage = {
         "clientId": CLIENT_ID,
         "timestamp": new Date().getTime(),
@@ -159,6 +172,17 @@ function SendStepEvent(){
     sendClientMessage(clientStepMessage);
 }
 
+function SendFrameRequest(){
+    console.log("request frame event ");
+    const clientRequestFrameMessage = {
+        "clientId": CLIENT_ID,
+        "timestamp": new Date().getTime(),
+        "type":CLIENT_MESSAGE_TYPE.FRAMEREQUEST, 
+        "content":"give me next frame?"
+    };
+    sendClientMessage(clientRequestFrameMessage);
+}
+
 function SendPauseEvent(){
     console.log("pause event TODO");
 }
@@ -177,6 +201,8 @@ function SendStopEvent(){
     };
     sendClientMessage(clientStopMessage);
     
+    //clearInterval(frameIntervalID);
+    //frameIntervalID = null;
 }
 
 
@@ -188,18 +214,19 @@ function SendStopEvent(){
 /* messaging */
 //stomp 
 const stompClient = new StompJs.Client({
-    brokerURL: 'ws://localhost:8080/c8j-websocket'
+    brokerURL: 'ws://localhost:8080/c8j-websocket'//endpoint
 });
 
 stompClient.onConnect = (frame) => {
     setConnected(true);//TODO remove UI coupling
-    console.log('Connected: ' + frame);
-    stompClient.subscribe('/topic/c8j-messages', (c8jmessage) => {
+    console.log('Connected: ' , frame);
+    //stompClient.subscribe('/topic/c8j-messages', (c8jmessage) => {
+    stompClient.subscribe('/queue/c8j-messages', (c8jmessage) => {
         showC8JMessage(c8jmessage.body);//TODO refactor, update ui state...
         //showC8JMessage(JSON.parse(c8jmessage.body).id);
         //showC8JMessage(JSON.parse(c8jmessage.body).type);
 		//showC8JMessage(JSON.parse(c8jmessage.body).content);
-    });
+    });//ensure receipt ?
     SendStartEvent();
 };
 
@@ -238,8 +265,8 @@ function StompDisconnect() {
 
 }
 
-function sendClientMessage(msg) { //TODO: broken esp on server
-    console.log("sending client msg = " + msg);
+function sendClientMessage(msg) { 
+    console.log("sending client msg = ", msg);
     stompClient.publish({
         destination: "/app/c8j-server",
         body: JSON.stringify(msg)
@@ -248,8 +275,24 @@ function sendClientMessage(msg) { //TODO: broken esp on server
 
 function showC8JMessage(message) {
     //document.getElementById("c8j-messages").innerHTML += "<div>" + message + "</div>"; 
-    document.getElementById("c8j-messages").innerHTML += message; 
+    //debugger;
+    try{
+        message = JSON.parse(message);
+        document.getElementById("c8j-messages").innerHTML += message; 
+        if(message.emulator){
+            updateClientUIState(message.emulator);
+        }
+    }catch(e){
+        console.error("Error parsing server message:", e);
+    }
+    updateClientUIState();
 }
+
+function updateClientUIState(serverState){
+    console.log("serverState = ", serverState); //basically entire emulator
+}
+
+
 // ...stomp 
 
 
