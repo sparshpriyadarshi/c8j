@@ -28,6 +28,7 @@ public class C8JEmulator {
         INITIALIZED, RUNNING, STEPPING, PAUSED, STOPPED, ERROR
     }
 
+    private static int NUM_V_REGISTERS = 16;
     private static int MAX_ADDRESSIBLE_BYTES = 4096; // 0x1000
     private static int FONT_MEM_BASE_IDX = 80;       // 0x050
     private static int FONT_MEM_LAST_IDX = 159;      // 0x09F
@@ -43,6 +44,9 @@ public class C8JEmulator {
     private static int DISP_H = 32;
     private static int DISP_RATE = 60;               // isn't really defined, but good to sync with other timers...
     
+    public int[] DISP_RGBA_FG = { 255,255,255,255 };
+    public int[] DISP_RGBA_BG = { 000,000,000,255 };
+
     public EMU_STATE state;
     private byte[] program;                          // Just a program, not in memory...
     private byte[] memory;                           // 
@@ -75,7 +79,7 @@ public class C8JEmulator {
     
     public C8JEmulator() throws IOException {
         // initialize empty registers V0 to VF, I, Stack
-        vRegisters = new byte[16];
+        vRegisters = new byte[NUM_V_REGISTERS];
         iRegister = 0;
         stack = new Stack<>();
         programCounter = 0;
@@ -603,41 +607,7 @@ public class C8JEmulator {
         System.out.printf("instruction counter = %d\n",emu.instructionCounter);
     }
 
-    public byte[] getImageData(){
-        /// 
-        /// Reference: [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Pixel_manipulation_with_canvas)
-        /// 
-        /// The ImageData object represents the underlying pixel data of an area of a canvas object. 
-        /// Its data property returns a Uint8ClampedArray (or Float16Array if requested) 
-        /// which can be accessed to look at the raw pixel data; each pixel is represented by four one-byte values 
-        /// (red, green, blue, and alpha, in that order; that is, "RGBA" format). 
-        /// Each color component is represented by an integer between 0 and 255. 
-        /// Each component is assigned a consecutive index within the array, with the top left pixel's red component being at index 0 within the array. 
-        /// Pixels then proceed from left to right, then downward, throughout the array.
-        /// 
-        /// The Uint8ClampedArray contains height × width × 4 bytes of data, with index values ranging from 0 to (height × width × 4) - 1.
-        
-        byte[] uInt8ClampedArray = new byte[DISP_H * DISP_W * 4];
-        for (int i = 0; i < (DISP_H * DISP_W * 4) - 1; i += 4) {
-            // TODO: fix this, random color for now...
-            Random randomizer = new Random();
-            int randInt = randomizer.nextInt();
-            byte randValue = (byte) ((randInt & 0xFF) & (instruction & 0xFF));
-            
-            uInt8ClampedArray[i + 0] = (byte) randValue;
-            randInt = randomizer.nextInt();
-            randValue = (byte) ((randInt & 0xFF) & (instruction & 0xFF));
-            uInt8ClampedArray[i + 1] = (byte) randValue;
-            randInt = randomizer.nextInt();
-            randValue = (byte) ((randInt & 0xFF) & (instruction & 0xFF));
-            uInt8ClampedArray[i + 2] = (byte) randValue;
-
-            uInt8ClampedArray[i + 3] = (byte) 0xFF;
-
-        }
-        
-        return uInt8ClampedArray;
-    }
+    
     
     public String dumpString() {//todo:redo this... stick to 1 convention for hex and decimal printing... see egs online
         StringBuilder sb = new StringBuilder(); 
@@ -794,4 +764,98 @@ public class C8JEmulator {
         System.out.println("Exiting C8MJ... | time = " + LocalDateTime.now());
 
     }
+
+    /*
+    public byte[] getImageData(){
+        /// 
+        /// Reference: [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Pixel_manipulation_with_canvas)
+        /// 
+        /// The ImageData object represents the underlying pixel data of an area of a canvas object. 
+        /// Its data property returns a Uint8ClampedArray (or Float16Array if requested) 
+        /// which can be accessed to look at the raw pixel data; each pixel is represented by four one-byte values 
+        /// (red, green, blue, and alpha, in that order; that is, "RGBA" format). 
+        /// Each color component is represented by an integer between 0 and 255. 
+        /// Each component is assigned a consecutive index within the array, with the top left pixel's red component being at index 0 within the array. 
+        /// Pixels then proceed from left to right, then downward, throughout the array.
+        /// 
+        /// The Uint8ClampedArray contains height × width × 4 bytes of data, with index values ranging from 0 to (height × width × 4) - 1.
+        
+        byte[] uInt8ClampedArray = new byte[DISP_H * DISP_W * 4];
+        for (int i = 0; i < (DISP_H * DISP_W * 4) - 1; i += 4) {
+            // TODO: fix this, random color for now...
+            Random randomizer = new Random();
+            int randInt = randomizer.nextInt();
+            byte randValue = (byte) ((randInt & 0xFF) & (instruction & 0xFF));
+            
+            uInt8ClampedArray[i + 0] = (byte) randValue;
+            randInt = randomizer.nextInt();
+            randValue = (byte) ((randInt & 0xFF) & (instruction & 0xFF));
+            uInt8ClampedArray[i + 1] = (byte) randValue;
+            randInt = randomizer.nextInt();
+            randValue = (byte) ((randInt & 0xFF) & (instruction & 0xFF));
+            uInt8ClampedArray[i + 2] = (byte) randValue;
+
+            uInt8ClampedArray[i + 3] = (byte) 0xFF;
+
+        }
+        
+        return uInt8ClampedArray;
+    }
+        */
+
+    public int[] getVRegisters() {
+        int[] registers = new int[NUM_V_REGISTERS];
+        for (int i = 0; i < 16; i++) {
+            registers[i] = (int) vRegisters[i];
+        }
+        return registers;
+    }
+
+    public int getProgramCounter() {
+        return programCounter;
+    }
+
+    public EMU_STATE getState() {
+        return state;
+    }
+
+    public int[] getImageData(){
+        /// 
+        /// Reference: [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Pixel_manipulation_with_canvas)
+        /// 
+        /// The ImageData object represents the underlying pixel data of an area of a canvas object. 
+        /// Its data property returns a Uint8ClampedArray (or Float16Array if requested) 
+        /// which can be accessed to look at the raw pixel data; each pixel is represented by four one-byte values 
+        /// (red, green, blue, and alpha, in that order; that is, "RGBA" format). 
+        /// Each color component is represented by an integer between 0 and 255. 
+        /// Each component is assigned a consecutive index within the array, with the top left pixel's red component being at index 0 within the array. 
+        /// Pixels then proceed from left to right, then downward, throughout the array.
+        /// 
+        /// The Uint8ClampedArray contains height × width × 4 bytes of data, with index values ranging from 0 to (height × width × 4) - 1.
+        
+        int[] uInt8ClampedArray = new int[DISP_H * DISP_W * 4];
+        int i = 0;
+        for(int ri = 0; ri < DISP_H; ri++){
+            String bitStringRow = String.format("%64s", Long.toBinaryString(displayLines[ri])).replace(' ', '0');
+            for(int ci = 0; ci < DISP_W; ci++){
+                assert (i < ((DISP_H * DISP_W * 4) - 1)): "idx-out-bounds uInt8ClampedArray";
+
+                if(bitStringRow.charAt(ci) == '1'){
+                    uInt8ClampedArray[i + 0] = DISP_RGBA_FG[0];
+                    uInt8ClampedArray[i + 1] = DISP_RGBA_FG[1];
+                    uInt8ClampedArray[i + 2] = DISP_RGBA_FG[2];
+                    uInt8ClampedArray[i + 3] = DISP_RGBA_FG[3];
+                }else{
+                    uInt8ClampedArray[i + 0] = DISP_RGBA_BG[0];
+                    uInt8ClampedArray[i + 1] = DISP_RGBA_BG[1];
+                    uInt8ClampedArray[i + 2] = DISP_RGBA_BG[2];
+                    uInt8ClampedArray[i + 3] = DISP_RGBA_BG[3];
+                }
+                i += 4;
+            }
+        }
+           
+        return uInt8ClampedArray;
+    }
+
 }

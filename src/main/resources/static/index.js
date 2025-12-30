@@ -2,9 +2,10 @@
 
 const DISPLAY_W = 64
 const DISPLAY_H = 32
-const DISPLAY_SCALE = 10
+const DISPLAY_SCALE = 10 // this causes problems: TODO: scaling not robust
 const OFF_RGB = { R:0,G:0,B:0}
 const ON_RGB = { R:200,G:220,B:255}
+
 const EMU_STATUSES = {
     INITIALIZED:"INITIALIZED",
     RUNNING: "RUNNING",
@@ -29,6 +30,12 @@ const CLIENT_CANARY_MESSAGE = {
 let frameIntervalID;
 function SetupCanvas(){
     const canvas = document.getElementById("main-canvas");
+    
+    // const offscreenCanvas = document.createElement("canvas");
+    // offscreenCanvas.width = DISPLAY_W;
+    // offscreenCanvas.height = DISPLAY_H;
+    // const offscreenCtx = offscreenCanvas.getContext("2d");
+
     canvas.width = DISPLAY_W * DISPLAY_SCALE;
 	canvas.height = DISPLAY_H * DISPLAY_SCALE;
     const ctx = canvas.getContext("2d");
@@ -58,7 +65,32 @@ function SetupCanvas(){
         )`;
     ctx.fillRect(1, 1, canvas.width -1, canvas.height-1);
     */
+
     
+}
+function UpdateCanvas(serverImageData) {
+    const canvas = document.getElementById("main-canvas");
+    const ctx = canvas.getContext("2d");
+    
+    //const offCanvas = document.createElement("canvas");
+    const offCanvas = document.getElementById("off-canvas");
+    offCanvas.width = DISPLAY_W;
+    offCanvas.height = DISPLAY_H;
+    const offCanvasCtx = offCanvas.getContext("2d");
+
+    // Use an offscreen canvas to prepare the 64x32 image
+    const imageData = offCanvasCtx.createImageData(DISPLAY_W, DISPLAY_H);
+    const data = imageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+        data[i + 0] = serverImageData[i + 0]; // red
+        data[i + 1] = serverImageData[i + 1]; // green
+        data[i + 2] = serverImageData[i + 2]; // blue
+        data[i + 3] = serverImageData[i + 3]; // alpha
+    }
+    offCanvasCtx.putImageData(imageData, 0, 0);
+
+    // drawImage respects the context's scale...
+    ctx.drawImage(offCanvas, 0, 0, DISPLAY_W, DISPLAY_H);
 }
 
 function Initialize() {
@@ -207,10 +239,6 @@ function SendStopEvent(){
 
 
 
-
-
-
-
 /* messaging */
 //stomp 
 const stompClient = new StompJs.Client({
@@ -222,7 +250,7 @@ stompClient.onConnect = (frame) => {
     console.log('Connected: ' , frame);
     //stompClient.subscribe('/topic/c8j-messages', (c8jmessage) => {
     stompClient.subscribe('/queue/c8j-messages', (c8jmessage) => {
-        showC8JMessage(c8jmessage.body);//TODO refactor, update ui state...
+        processServerMessage(c8jmessage.body);
         //showC8JMessage(JSON.parse(c8jmessage.body).id);
         //showC8JMessage(JSON.parse(c8jmessage.body).type);
 		//showC8JMessage(JSON.parse(c8jmessage.body).content);
@@ -273,23 +301,26 @@ function sendClientMessage(msg) {
     });
 }
 
-function showC8JMessage(message) {
-    //document.getElementById("c8j-messages").innerHTML += "<div>" + message + "</div>"; 
-    //debugger;
+function processServerMessage(message) {
+    
     try{
-        message = JSON.parse(message);
+        let messageParsed = JSON.parse(message);
         document.getElementById("c8j-messages").innerHTML += message; 
-        if(message.emulator){
-            updateClientUIState(message.emulator);
+        if(messageParsed.emulator){
+            updateClientUIState(messageParsed.emulator);
         }
     }catch(e){
         console.error("Error parsing server message:", e);
     }
-    updateClientUIState();
+    
 }
 
 function updateClientUIState(serverState){
     console.log("serverState = ", serverState); //basically entire emulator
+
+    UpdateCanvas(serverState.imageData);
+
+
 }
 
 
