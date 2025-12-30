@@ -31,5 +31,4 @@ build/
 
 ### VS Code ###
 .vscode/
-notes.md
-src/main/resources/binaries/ibmlogo.ch8
+src/main/resources/binaries/*
