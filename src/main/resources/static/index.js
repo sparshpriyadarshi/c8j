@@ -31,11 +31,6 @@ let frameIntervalID;
 function SetupCanvas(){
     const canvas = document.getElementById("main-canvas");
     
-    // const offscreenCanvas = document.createElement("canvas");
-    // offscreenCanvas.width = DISPLAY_W;
-    // offscreenCanvas.height = DISPLAY_H;
-    // const offscreenCtx = offscreenCanvas.getContext("2d");
-
     canvas.width = DISPLAY_W * DISPLAY_SCALE;
 	canvas.height = DISPLAY_H * DISPLAY_SCALE;
     const ctx = canvas.getContext("2d");
@@ -251,9 +246,7 @@ stompClient.onConnect = (frame) => {
     //stompClient.subscribe('/topic/c8j-messages', (c8jmessage) => {
     stompClient.subscribe('/queue/c8j-messages', (c8jmessage) => {
         processServerMessage(c8jmessage.body);
-        //showC8JMessage(JSON.parse(c8jmessage.body).id);
-        //showC8JMessage(JSON.parse(c8jmessage.body).type);
-		//showC8JMessage(JSON.parse(c8jmessage.body).content);
+        
     });//ensure receipt ?
     SendStartEvent();
 };
