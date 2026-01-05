@@ -5,6 +5,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.HexFormat;
@@ -20,7 +22,7 @@ import org.slf4j.LoggerFactory;
  * 
  * A CHIP-8 emulator
  */
-public class C8JEmulator {
+public class C8JEmulator implements Runnable{
     enum Key {//TODO use this
         ZERO, ONE, TWO, THREE, FOUR, FIVE, SIX, SEVEN, EIGHT, NINE, A, B, C, D, E, F
     }
@@ -47,6 +49,8 @@ public class C8JEmulator {
     public int[] DISP_RGBA_FG = { 255,255,255,255 };
     public int[] DISP_RGBA_BG = { 000,000,000,255 };
 
+
+    public Instant emuTimeInstant;
     public EMU_STATE state;
     private byte[] program;                          // Just a program, not in memory...
     private byte[] memory;                           // 
@@ -75,7 +79,7 @@ public class C8JEmulator {
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/kbtest.ch8"; // TODO this path can be
                                                                                                         // done better
     public static HexFormat HEX_LINEAR_FORMATTER = HexFormat.ofDelimiter(":").withUpperCase().withPrefix("0x");
-    Logger logger = LoggerFactory.getLogger(LoggingController.class);
+    static Logger logger = LoggerFactory.getLogger(LoggingController.class);
     
     public C8JEmulator() throws IOException {
         // initialize empty registers V0 to VF, I, Stack
@@ -100,6 +104,7 @@ public class C8JEmulator {
 
         instructionCounter = 0;
         state = EMU_STATE.INITIALIZED;
+        emuTimeInstant = Instant.now();
     }
 
     private void readCh8Binary(Path path) throws IOException {
@@ -525,78 +530,39 @@ public class C8JEmulator {
         instructionCounter++;
         
     }
-    
-    private void run() throws Exception {
+
+    public void run() {
+        int iCounter = 0;
+        Instant batchBegin = emuTimeInstant;
+        while(iCounter < INSTRUCTION_RATE){
+            try {
+                step();
+            } catch (Exception e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            iCounter++;
+        }
+        Instant batchEnd = Instant.now();
+        Duration timeSpan = Duration.between(batchBegin, batchEnd);
+        if(timeSpan.toMillis() >= 16.67){ //for 60Hz
+            delayTimer--;
+            soundTimer--;
+        }
+        emuTimeInstant = batchEnd;
+        logger.debug(String.format("Batch ran %d instructions", iCounter));
+        //return iCounter;
+    }
+
+    private void runOld() throws Exception {
         int counter = 0;
         while (counter++ < 4096) {
         //while (true) {
             step();
         }
     }
+
     
-    public static void runConsoleConcurrent(C8JEmulator emu) throws Exception {
-        assert emu != null;
-
-        int instructionRate = INSTRUCTION_RATE;
-        int displayRate = DISP_RATE;
-        int delaytimerRate = DELAY_TIMER_RATE;
-        int soundtimerRate = SOUND_TIMER_RATE;
-
-        Timer instructionTimer = new Timer("instructionTimer");
-        Timer displayTimer = new Timer("displayTimer");
-        Timer delayTimer = new Timer("delayTimer");
-        Timer soundTimer = new Timer("soundTimer");
-
-        TimerTask instructionTask = new TimerTask() {
-            @Override
-            public void run() {
-                try {
-                    // emu.step();
-                    System.out.println("instruction timer tick");
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        };
-        TimerTask displayTask = new TimerTask() {
-            @Override
-            public void run() {
-                try {
-                    System.out.println("display timer tick");
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        };
-        TimerTask delayTimerTask = new TimerTask() {
-            @Override
-            public void run() {
-                try {
-                    System.out.println("delay timer tick");
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        };
-        TimerTask soundTimerTask = new TimerTask() {
-            @Override
-            public void run() {
-                try {
-                    System.out.println("sound timer tick");
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        };
-
-        instructionTimer.scheduleAtFixedRate(instructionTask, 0, (1000 / instructionRate));
-        displayTimer.scheduleAtFixedRate(displayTask, 0, (1000 / displayRate));// 60Hz or 60FPS => 16ms each or
-                                                                               // 1000ms/60hz = 16.67ms
-
-        delayTimer.scheduleAtFixedRate(delayTimerTask, 0, (1000 / delaytimerRate));
-        soundTimer.scheduleAtFixedRate(soundTimerTask, 0, (1000 / soundtimerRate));
-
-    }
 
     public static void consoleDisplay(C8JEmulator emu){
         System.out.print("\033[H\033[2J");// ascii escape, cursorhome, clearscreen
@@ -738,7 +704,7 @@ public class C8JEmulator {
                     break;
                 case 'r': // run (at the moment "resumes".... if you stepped a bit that is preserved state..)
                     try {
-                        C8JEmulator.runConsoleConcurrent(emu);
+                        //C8JEmulator.runConsoleConcurrent(emu);
                     } catch (Exception e) {
                         // TODO Auto-generated catch block
                         e.printStackTrace();
@@ -765,50 +731,24 @@ public class C8JEmulator {
 
     }
 
-    /*
-    public byte[] getImageData(){
-        /// 
-        /// Reference: [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Pixel_manipulation_with_canvas)
-        /// 
-        /// The ImageData object represents the underlying pixel data of an area of a canvas object. 
-        /// Its data property returns a Uint8ClampedArray (or Float16Array if requested) 
-        /// which can be accessed to look at the raw pixel data; each pixel is represented by four one-byte values 
-        /// (red, green, blue, and alpha, in that order; that is, "RGBA" format). 
-        /// Each color component is represented by an integer between 0 and 255. 
-        /// Each component is assigned a consecutive index within the array, with the top left pixel's red component being at index 0 within the array. 
-        /// Pixels then proceed from left to right, then downward, throughout the array.
-        /// 
-        /// The Uint8ClampedArray contains height × width × 4 bytes of data, with index values ranging from 0 to (height × width × 4) - 1.
-        
-        byte[] uInt8ClampedArray = new byte[DISP_H * DISP_W * 4];
-        for (int i = 0; i < (DISP_H * DISP_W * 4) - 1; i += 4) {
-            // TODO: fix this, random color for now...
-            Random randomizer = new Random();
-            int randInt = randomizer.nextInt();
-            byte randValue = (byte) ((randInt & 0xFF) & (instruction & 0xFF));
-            
-            uInt8ClampedArray[i + 0] = (byte) randValue;
-            randInt = randomizer.nextInt();
-            randValue = (byte) ((randInt & 0xFF) & (instruction & 0xFF));
-            uInt8ClampedArray[i + 1] = (byte) randValue;
-            randInt = randomizer.nextInt();
-            randValue = (byte) ((randInt & 0xFF) & (instruction & 0xFF));
-            uInt8ClampedArray[i + 2] = (byte) randValue;
-
-            uInt8ClampedArray[i + 3] = (byte) 0xFF;
-
-        }
-        
-        return uInt8ClampedArray;
-    }
-        */
-
     public int[] getVRegisters() {
         int[] registers = new int[NUM_V_REGISTERS];
         for (int i = 0; i < 16; i++) {
             registers[i] = (int) vRegisters[i];
         }
         return registers;
+    }
+
+    public Stack<Integer> getStack(){
+        return stack;
+    }
+    //TODO: decide if hexing dehexing should here or client...
+    public byte[] getMemory(){
+        return memory;
+    }
+
+    public int getIRegister(){
+        return (int)(iRegister & 0xFFFF);
     }
 
     public int getProgramCounter() {

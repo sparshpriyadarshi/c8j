@@ -95,16 +95,20 @@ function Initialize() {
 	statusText.innerText = `STATUS: ${EMU_STATUSES.STOPPED}`;
 
 	const startButton = document.getElementById("start-button");
+    const pauseButton = document.getElementById("pause-button");
 	const stopButton = document.getElementById("stop-button");
 	const stepButton = document.getElementById("step-button");
-	const clearButton = document.getElementById("clear-button");
+    const resumeButton = document.getElementById("resume-button");
+    const clearButton = document.getElementById("clear-button");
+
     const keypadButtons = document.getElementById("keypad-section").getElementsByClassName("keypad");
     const requestFrameButton = document.getElementById("request-frame-button");
    
-	startButton.addEventListener("click", SetStatusStart);
+	//startButton.addEventListener("click", SetStatusStart);
     startButton.addEventListener('click', StompConnect);//TODO: what the hell did u do
+    pauseButton.addEventListener('click', SendPauseEvent);
     stopButton.addEventListener('click', StompDisconnect);
-	stopButton.addEventListener("click", SetStatusStop);//TODO: what the hell did u do
+	//stopButton.addEventListener("click", SetStatusStop);//TODO: what the hell did u do
     for(const btn of keypadButtons){
         btn.addEventListener("click", (e) => SendKeypadEvent(e.target.id));
     }
@@ -113,6 +117,7 @@ function Initialize() {
     document.querySelectorAll("form").forEach(form => form.addEventListener('submit', (e) => e.preventDefault()));
 	requestFrameButton.addEventListener("click", SendFrameRequest);
     stepButton.addEventListener("click", SendStepEvent);
+    resumeButton.addEventListener("click", SendResumeEvent);
 
     let currentDateTime = new Date();
 	// DD-MM-YYYY HH:MM:SS
@@ -145,13 +150,19 @@ function RequestFrame(){
     console.log(`client requested frames = ${framesCounter++}`);
     
 }
+function UpdateStatus(s){
+    const status = document.getElementById("player-status-text");
+    const v = EMU_STATUSES[s]
+	status.innerText = `STATUS: ${v}`;
+	//statusText.innerText = `STATUS: ${EMU_STATUSES.STOPPED}`;
 
-function SetStatusStart(){
+}
+function SetStatusStart_disable(){
 	const status = document.getElementById("player-status-text");
 	status.innerText = `STATUS: ${EMU_STATUSES.RUNNING}`;
 }
 
-function SetStatusStop(){
+function SetStatusStop_disable(){
 	const status = document.getElementById("player-status-text");
 	status.innerText = `STATUS: ${EMU_STATUSES.STOPPED}`;
 }
@@ -211,11 +222,25 @@ function SendFrameRequest(){
 }
 
 function SendPauseEvent(){
-    console.log("pause event TODO");
+    console.log("pause event ");
+    const clientPauseEvent = {
+        "clientId": CLIENT_ID,
+        "timestamp": new Date().getTime(),
+        "type":CLIENT_MESSAGE_TYPE.CONTROL, 
+        "content":"PAUSE"
+    };
+    sendClientMessage(clientPauseEvent);
 }
 
 function SendResumeEvent(){
-    console.log("resume event TODO");
+    console.log("resume event ");
+    const clientResumeMessage = {
+        "clientId": CLIENT_ID,
+        "timestamp": new Date().getTime(),
+        "type":CLIENT_MESSAGE_TYPE.CONTROL, 
+        "content":"RESUME"
+    };
+    sendClientMessage(clientResumeMessage);
 }
 
 function SendStopEvent(){
@@ -241,8 +266,8 @@ const stompClient = new StompJs.Client({
 });
 
 stompClient.onConnect = (frame) => {
-    setConnected(true);//TODO remove UI coupling
-    console.log('Connected: ' , frame);
+    //setConnected(true);//TODO remove UI coupling
+    console.log('Connecting ' , frame);
     //stompClient.subscribe('/topic/c8j-messages', (c8jmessage) => {
     stompClient.subscribe('/queue/c8j-messages', (c8jmessage) => {
         processServerMessage(c8jmessage.body);
@@ -281,8 +306,8 @@ function StompConnect() {
 function StompDisconnect() {
     SendStopEvent();
     stompClient.deactivate();
-    console.log("Disconnected");
-    setConnected(false);//TODO: remove ui coupling
+    console.log("Disconnecting...");
+    //setConnected(false);//TODO: remove ui coupling
 
 }
 
@@ -298,7 +323,7 @@ function processServerMessage(message) {
     
     try{
         let messageParsed = JSON.parse(message);
-        document.getElementById("c8j-messages").innerHTML += message; 
+        //document.getElementById("c8j-messages").innerHTML += message; 
         if(messageParsed.emulator){
             updateClientUIState(messageParsed.emulator);
         }
@@ -310,9 +335,9 @@ function processServerMessage(message) {
 
 function updateClientUIState(serverState){
     console.log("serverState = ", serverState); //basically entire emulator
-
+    //console.log(serverState.memory);
     UpdateCanvas(serverState.imageData);
-
+    UpdateStatus(serverState.state);
 
 }
 

@@ -49,6 +49,7 @@
         <!--<form method="post" id="input-form"> -->
         <span id="player-status-text">emulator status</span><br/>
         <button id="start-button">START</button>
+        <!-- <button id="run-button">RUN</button> -->
         <button id="pause-button">PAUSE</button>
         <button id="step-button">STEP</button>
         <button id="request-frame-button">REQUEST-FRAME</button>
@@ -59,24 +60,29 @@
         
         <!-- </form> -->
     </p>
-    <p id="c8j-messages-container">
-        <h3>Server messages:</h3>
-        <button id="clear-button">clear</button><br/>
-     <textarea id="c8j-messages" rows="20" cols="80" readonly>
+    <p>
 
-     </textarea>   
+        
     </p>
+    
 </main>
 <footer>
     <details>
         <summary> Logs </summary>
+        <button id="clear-button">clear</button><br />
+        <p id="c8j-messages-container">
+            <!-- <h3>Server messages:</h3> -->
+            <textarea id="c8j-messages" rows="20" cols="80" readonly>
+
+            </textarea>
+        </p>
         <pre>
 				dev logs could come here...
 				another line of dev log....
 		</pre>
     </details>
 
-   
+
 </footer>
 </body>
 </html>
