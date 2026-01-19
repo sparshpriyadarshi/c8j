@@ -27,7 +27,8 @@ const CLIENT_CANARY_MESSAGE = {
     "type":CLIENT_MESSAGE_TYPE.CANARY, 
     "content":"client message content"
 };
-let frameIntervalID;
+const CLIENT_FRAME_INTERVAL_MS = 100;
+let CLIENT_FRAME_INTERVAL_ID = 0;//setInterval doesn't return 0?
 function SetupCanvas(){
     const canvas = document.getElementById("main-canvas");
     
@@ -150,13 +151,24 @@ function RequestFrame(){
     console.log(`client requested frames = ${framesCounter++}`);
     
 }
-function UpdateStatus(s){
+function UpdateStatus_disable(s){
     const status = document.getElementById("player-status-text");
     const v = EMU_STATUSES[s]
 	status.innerText = `STATUS: ${v}`;
 	//statusText.innerText = `STATUS: ${EMU_STATUSES.STOPPED}`;
 
 }
+
+function UpdateStateVars(state){
+    document.getElementById("player-status-text").innerText = state.state;
+    document.getElementById("emu-server-timestamp").innerText = state.emuTimeInstant;
+    document.getElementById("pc-value").innerText = state.programCounter;
+    document.getElementById("i-value").innerText = state.iregister;
+    document.getElementById("v-values").innerText = state.vregisters;
+    document.getElementById("s-values").innerText = state.stack;
+}
+
+
 function SetStatusStart_disable(){
 	const status = document.getElementById("player-status-text");
 	status.innerText = `STATUS: ${EMU_STATUSES.RUNNING}`;
@@ -184,8 +196,7 @@ function SendStartEvent(){
         "content":"START"
     };
     sendClientMessage(clientStartMessage);
-    //investigate if polling is really needed, maybe server sends to the existing websocket at its own discretion
-    //frameIntervalID ??= setInterval(SendFrameRequest, 1000);
+    
 
 }
 function SendKeypadEvent(idValue){
@@ -229,6 +240,7 @@ function SendPauseEvent(){
         "type":CLIENT_MESSAGE_TYPE.CONTROL, 
         "content":"PAUSE"
     };
+    clearInterval(CLIENT_FRAME_INTERVAL_ID);
     sendClientMessage(clientPauseEvent);
 }
 
@@ -241,6 +253,9 @@ function SendResumeEvent(){
         "content":"RESUME"
     };
     sendClientMessage(clientResumeMessage);
+    //investigate if polling is really needed, maybe server sends to the existing websocket at its own discretion
+    //CLIENT_FRAME_INTERVAL_ID ??= setInterval(SendFrameRequest, CLIENT_FRAME_INTERVAL_MS); //wonder if frame updates should be requestAnimationFramed
+    CLIENT_FRAME_INTERVAL_ID = setInterval(SendFrameRequest, CLIENT_FRAME_INTERVAL_MS); //wonder if frame updates should be requestAnimationFramed
 }
 
 function SendStopEvent(){
@@ -253,8 +268,8 @@ function SendStopEvent(){
     };
     sendClientMessage(clientStopMessage);
     
-    //clearInterval(frameIntervalID);
-    //frameIntervalID = null;
+    clearInterval(CLIENT_FRAME_INTERVAL_ID);
+    CLIENT_FRAME_INTERVAL_ID = null;
 }
 
 
@@ -337,7 +352,8 @@ function updateClientUIState(serverState){
     console.log("serverState = ", serverState); //basically entire emulator
     //console.log(serverState.memory);
     UpdateCanvas(serverState.imageData);
-    UpdateStatus(serverState.state);
+    //UpdateStatus(serverState.state);
+    UpdateStateVars(serverState);
 
 }
 

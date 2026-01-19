@@ -47,7 +47,6 @@
     </p>
     <p>
         <!--<form method="post" id="input-form"> -->
-        <span id="player-status-text">emulator status</span><br/>
         <button id="start-button">START</button>
         <!-- <button id="run-button">RUN</button> -->
         <button id="pause-button">PAUSE</button>
@@ -61,8 +60,13 @@
         <!-- </form> -->
     </p>
     <p>
+        EMULATION_STATE  = <span id="player-status-text"></span><br/>
+        TIMESTAMP        = <span id="emu-server-timestamp"></span><br/>
+        PROGRAM_COUNTER  = <span id="pc-value"></span><br/>
+        INDEX_REGISTER   = <span id="i-value"></span><br/>
+        V_REGISTERS_0-16 = <span id="v-values"></span><br/>
+        STACK            = <span id="s-values"></span><br/>
 
-        
     </p>
     
 </main>

@@ -80,7 +80,8 @@ public class C8JEmulator implements Runnable{
                                                                                                         // done better
     public static HexFormat HEX_LINEAR_FORMATTER = HexFormat.ofDelimiter(":").withUpperCase().withPrefix("0x");
     static Logger logger = LoggerFactory.getLogger(LoggingController.class);
-    
+    public static final double JIFFY = 16.67;
+
     public C8JEmulator() throws IOException {
         // initialize empty registers V0 to VF, I, Stack
         vRegisters = new byte[NUM_V_REGISTERS];
@@ -545,7 +546,7 @@ public class C8JEmulator implements Runnable{
         }
         Instant batchEnd = Instant.now();
         Duration timeSpan = Duration.between(batchBegin, batchEnd);
-        if(timeSpan.toMillis() >= 16.67){ //for 60Hz
+        if(timeSpan.toMillis() >= JIFFY){ //for 60Hz
             delayTimer--;
             soundTimer--;
         }
