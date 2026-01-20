@@ -8,14 +8,10 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.Random;
 import java.util.Scanner;
 import java.util.Stack;
-import java.util.Timer;
-import java.util.TimerTask;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 /**
@@ -74,9 +70,9 @@ public class C8JEmulator implements Runnable{
 
     // This welcome screen program is always loaded by default
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/c8splash.ch8"; 
-    public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/ibmlogo.ch8"; 
+    //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/ibmlogo.ch8"; 
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/persontest.ch8"; 
-    //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/kbtest.ch8"; // TODO this path can be
+    public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/kbtest.ch8"; // TODO this path can be
                                                                                                         // done better
     public static HexFormat HEX_LINEAR_FORMATTER = HexFormat.ofDelimiter(":").withUpperCase().withPrefix("0x");
     static Logger logger = LoggerFactory.getLogger(LoggingController.class);
@@ -632,9 +628,8 @@ public class C8JEmulator implements Runnable{
     }
 
     public void consumeKeypress(String keyString){
-        keyString = keyString.toLowerCase();
-        keyString = keyString.substring(0,1);
-        keyPress = (byte)Byte.parseByte(keyString);
+        keyString = "0"+keyString.toLowerCase();
+        keyPress = HexFormat.of().parseHex(keyString, 0, 2)[0];//parseHEx expects even len for some reason...
         System.out.printf("keypress set = %x\n", keyPress);
     }
 
