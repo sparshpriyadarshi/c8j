@@ -71,8 +71,12 @@ public class C8JEmulator implements Runnable{
     // This welcome screen program is always loaded by default
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/c8splash.ch8"; 
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/ibmlogo.ch8"; 
+    //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/ibmlogo2.ch8"; 
+    //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/tim-c8-logo.ch8"; 
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/persontest.ch8"; 
-    public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/kbtest.ch8"; // TODO this path can be
+    //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/kbtest.ch8"; // TODO this path can be
+    public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/corax+.ch8"; 
+    //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/flagstest.ch8"; 
                                                                                                         // done better
     public static HexFormat HEX_LINEAR_FORMATTER = HexFormat.ofDelimiter(":").withUpperCase().withPrefix("0x");
     static Logger logger = LoggerFactory.getLogger(LoggingController.class);
@@ -198,18 +202,18 @@ public class C8JEmulator implements Runnable{
         assert decodedInstructions.length == 4 : "instruction doesn't have 4 nibbles" + decodedInstructions;
 
         //System.out.printf("decoded instr = %x%x%x%x\n", decodedInstructions[0], decodedInstructions[1],decodedInstructions[2], decodedInstructions[3]);
-        logger.debug(String.format("decoded instr = %x%x%x%x\n", decodedInstructions[0], decodedInstructions[1],decodedInstructions[2], decodedInstructions[3]));
+        logger.info(String.format("decoded instr = %x%x%x%x\n", decodedInstructions[0], decodedInstructions[1],decodedInstructions[2], decodedInstructions[3]));
         int x, y;
         byte n;
         switch (decodedInstructions[0]) {// TODO: refactor this big switch and dcoder better....
             case 0x0:
                 if (decodedInstructions[1] == 0x0 && decodedInstructions[2] == 0xE && decodedInstructions[3] == 0x0) { // 00E0
-                    //System.out.println("00E0 clearing screen");
+                    logger.debug("00E0 clearing screen");
                     displayLines = new long[DISP_H];
                 } else if (decodedInstructions[1] == 0x0 && decodedInstructions[2] == 0xE
                         && decodedInstructions[3] == 0xE) {// 00EE
                     programCounter = stack.pop();
-                    //System.out.printf("00EE ret from subrt to %x\n", programCounter);
+                    logger.debug("00EE ret from subrt to %x\n", programCounter);
                 } else { // 0NNN calls machine language subroutine at NNN,not implemented here...
                     throw new Exception("0NNN exec mach lang subrt at NNN, this is unimplemented");
                 }
@@ -491,7 +495,7 @@ public class C8JEmulator implements Runnable{
                     iRegister = (short) ((int) FONT_MEM_BASE_IDX + (5 * (int) vx));
                 }else if(decodedInstructions[2] == 0x3 && decodedInstructions[3] == 0x3){
                     //BCD VX at I
-                    int vx = (int)vRegisters[x];
+                    int vx = (int)(vRegisters[x] & 0xFF);//TODO should vRegisters always be preloaded & FF ? this looks repetetive, sign extension sigh
                     memory[iRegister + 0] = (byte)(vx / 100);
                     memory[iRegister + 1] = (byte)((vx % 100) / 10);
                     memory[iRegister + 2] = (byte)(vx % 10);                    
@@ -520,6 +524,7 @@ public class C8JEmulator implements Runnable{
                 throw new Exception(String.format("%x decoded intr unimplemented %n", instruction));// TODO choose
                                                                                                     // approp. ex
         }
+        //todo corax vx fails   
     }
 
     public void step() throws Exception {
@@ -700,7 +705,7 @@ public class C8JEmulator implements Runnable{
                     break;
                 case 'r': // run (at the moment "resumes".... if you stepped a bit that is preserved state..)
                     try {
-                        //C8JEmulator.runConsoleConcurrent(emu);
+                        emu.runOld();
                     } catch (Exception e) {
                         // TODO Auto-generated catch block
                         e.printStackTrace();
