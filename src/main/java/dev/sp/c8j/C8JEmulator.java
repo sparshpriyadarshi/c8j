@@ -80,6 +80,7 @@ public class C8JEmulator implements Runnable{
                                                                                                         // done better
     public static HexFormat HEX_LINEAR_FORMATTER = HexFormat.ofDelimiter(":").withUpperCase().withPrefix("0x");
     static Logger logger = LoggerFactory.getLogger(LoggingController.class);
+    
     public static final double JIFFY = 16.67;
 
     public C8JEmulator() throws IOException {
@@ -202,7 +203,7 @@ public class C8JEmulator implements Runnable{
         assert decodedInstructions.length == 4 : "instruction doesn't have 4 nibbles" + decodedInstructions;
 
         //System.out.printf("decoded instr = %x%x%x%x\n", decodedInstructions[0], decodedInstructions[1],decodedInstructions[2], decodedInstructions[3]);
-        logger.info(String.format("decoded instr = %x%x%x%x\n", decodedInstructions[0], decodedInstructions[1],decodedInstructions[2], decodedInstructions[3]));
+        logger.info(String.format("decoded instr = %x%x%x%x", decodedInstructions[0], decodedInstructions[1],decodedInstructions[2], decodedInstructions[3]));
         int x, y;
         byte n;
         switch (decodedInstructions[0]) {// TODO: refactor this big switch and dcoder better....
@@ -265,17 +266,21 @@ public class C8JEmulator implements Runnable{
                 break;
             case 0x6:
                 //System.out.printf("6XNN: set VX = NN\n");
+                logger.debug("6XNN: set VX = NN");
                 x = (int) decodedInstructions[1];
                 n = (byte) (instruction & 0xFF);
                 vRegisters[x] = n;
+                logger.debug("v[%d] = %x now", x, n);
                 //System.out.printf("v[%d] = %x now\n", x, n);
                 break;
             case 0x7:
                 //System.out.printf("7XNN: VX += NN\n");
+                logger.debug("7XNN: VX += NN");
                 x = (int) decodedInstructions[1];
                 n = (byte) (instruction & 0xFF);
                 vRegisters[x] += n;
                 //System.out.printf("v[%d] = %x now\n", x, n);
+                logger.debug("v[%d] = %x now", x, n);
                 break;
             case 0x8:
                 if (decodedInstructions[3] == 0x0) {
@@ -307,6 +312,7 @@ public class C8JEmulator implements Runnable{
                     //System.out.printf("v[%x] = v[%x] xor v[%x] = %x\n", x, x, y, vRegisters[x]);
                 } else if (decodedInstructions[3] == 0x4) {
                     //System.out.println("8XY4: VX = VX + VY, carry");
+                    logger.debug("8XY4: VX = VX + VY, carry");
                     x = (int) decodedInstructions[1];
                     y = (int) decodedInstructions[2];
                     int vx = vRegisters[x];
@@ -320,9 +326,11 @@ public class C8JEmulator implements Runnable{
                     vRegisters[x] += vRegisters[y];
                     vRegisters[0xf] = 0;
                     //System.out.printf("v[%x] = v[%x] + v[%x] = %x, carry = %x\n", x, x, y, vRegisters[x],vRegisters[0xf]);
+                    logger.debug("v[%x] = v[%x] + v[%x] = %x, carry = %x", x, x, y, vRegisters[x],vRegisters[0xf]);
 
                 } else if (decodedInstructions[3] == 0x5) {
                     //System.out.println("8XY5: VX=VX-VY");
+                    logger.debug("8XY5: VX=VX-VY");
                     x = (int) decodedInstructions[1];
                     y = (int) decodedInstructions[2];
                     if (vRegisters[x] > vRegisters[y]) {
@@ -332,10 +340,11 @@ public class C8JEmulator implements Runnable{
                     }
                     vRegisters[x] = (byte) (vRegisters[x] - vRegisters[y]);
                     //System.out.printf("v[%x] = v[%x] - v[%x] = %x, carry = %x\n", x, x, y, vRegisters[x],vRegisters[0xf]);
+                    logger.debug("v[%x] = v[%x] - v[%x] = %x, carry = %x", x, x, y, vRegisters[x],vRegisters[0xf]);
 
-                    //System.out.printf("\n");
                 } else if (decodedInstructions[3] == 0x6) { // Ambiguous instruction, doing original!
                     //System.out.println("8XY6: VX shiftRight");
+                    logger.debug("8XY6: VX shiftRight");
                     x = (int) decodedInstructions[1];
                     y = (int) decodedInstructions[2];
                     vRegisters[x] = vRegisters[y]; // this doesn't happen in newer impls
@@ -346,8 +355,10 @@ public class C8JEmulator implements Runnable{
                     }
                     vRegisters[x] = (byte) (vRegisters[x] >> 1);
                     //System.out.printf("VX now = %x, VF = %x\n", vRegisters[x], vRegisters[0xf]);
+                    logger.debug("VX now = %x, VF = %x", vRegisters[x], vRegisters[0xf]);
                 } else if (decodedInstructions[3] == 0x7) {
                     //System.out.println("8XY5: VX=VY-VX");
+                    logger.debug("8XY5: VX=VY-VX");
                     x = (int) decodedInstructions[1];
                     y = (int) decodedInstructions[2];
                     if (vRegisters[y] > vRegisters[x]) {
@@ -357,9 +368,11 @@ public class C8JEmulator implements Runnable{
                     }
                     vRegisters[x] = (byte) (vRegisters[y] - vRegisters[x]);
                     //System.out.printf("v[%x] = v[%x] - v[%x] = %x, carry = %x\n", x, y, x, vRegisters[x],vRegisters[0xf]);
+                    logger.debug("v[%x] = v[%x] - v[%x] = %x, carry = %x", x, y, x, vRegisters[x],vRegisters[0xf]);
 
                 } else if (decodedInstructions[3] == 0xE) {/// Ambiguous instruction, doing original!
                     //System.out.println("8XYE: VX shiftLeft");
+                    logger.debug("8XYE: VX shiftLeft");
                     x = (int) decodedInstructions[1];
                     y = (int) decodedInstructions[2];
                     vRegisters[x] = vRegisters[y]; // this doesn't happen in newer impls
@@ -369,14 +382,14 @@ public class C8JEmulator implements Runnable{
                         vRegisters[0xf] = 0;
                     }
                     vRegisters[x] = (byte) (vRegisters[x] << 1);
-                    //System.out.printf("VX now = %x, VF = %x\n", vRegisters[x], vRegisters[0xf]);
+                    logger.debug("VX now = %x, VF = %x", vRegisters[x], vRegisters[0xf]);
                 } else {
                     throw new Exception(String.format("%x decoded intr unimplemented %n", instruction)); // TODO make
                                                                                                          // custom
                                                                                                          // exception
 
                 }
-
+                //TODO: Shift opcodes should not retain bits fails in corax
                 break;
             case 0x9:
                 //System.out.printf("9XY0: skip if VX not VY");
@@ -475,6 +488,7 @@ public class C8JEmulator implements Runnable{
                 break;
             case 0xF:
                 //System.out.println("FXNN instr decoded");
+                logger.debug("FXNN instr decoded");
                 x = (int) (decodedInstructions[1]);
                 if (decodedInstructions[2] == 0x0 && decodedInstructions[3] == 0x7) {
                     vRegisters[x] = (byte) (delayTimer & 0xFF);
@@ -509,6 +523,7 @@ public class C8JEmulator implements Runnable{
 
                 }else if(decodedInstructions[2] == 0x6 && decodedInstructions[3] == 0x5){//ambi
                     //System.out.println("load from memory from v0 to vx incl");
+                    logger.debug("load from memory from v0 to vx incl");
                     x = decodedInstructions[1] & 0xFF;
                     for(int idx = 0; idx <= x; idx++){
                        vRegisters[idx] = memory[iRegister + idx];
@@ -651,6 +666,7 @@ public class C8JEmulator implements Runnable{
             return;
         }
         System.out.println(emu);
+        
 
         Scanner scanner = new Scanner(System.in);
         boolean replLoop = true;
