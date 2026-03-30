@@ -77,7 +77,7 @@ public class C8JEmulator implements Runnable{
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/tim-c8-logo.ch8"; 
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/persontest.ch8"; 
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/kbtest.ch8"; // TODO this path can be
-   // public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/corax+.ch8"; 
+    //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/corax+.ch8"; 
     public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src\\main\\resources\\binaries\\corax-vx-overflow-only.ch8"; 
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/flagstest.ch8"; 
                                                                                                         // done better
@@ -177,7 +177,7 @@ public class C8JEmulator implements Runnable{
         instruction = (short) (instruction << Byte.SIZE);
         instruction = (short) (instruction | memory[programCounter + 1] & 0xFF);
 
-        logger.debug("Fetched instruction@PC=%4x = %4x",programCounter, instruction);
+        logger.debug("Fetched instruction@PC={} = {}", Integer.toHexString(programCounter), Integer.toHexString(instruction & 0xFFFF));
 
         programCounter += INSTRUCTION_WIDTH;
 
@@ -217,7 +217,7 @@ public class C8JEmulator implements Runnable{
                 } else if (decodedInstructions[1] == 0x0 && decodedInstructions[2] == 0xE
                         && decodedInstructions[3] == 0xE) {// 00EE
                     programCounter = stack.pop();
-                    logger.debug("00EE ret from subrt to %x\n", programCounter);
+                    logger.debug("00EE ret from subrt to {}", Integer.toHexString(programCounter));
                 } else { // 0NNN calls machine language subroutine at NNN,not implemented here...
                     throw new Exception("0NNN exec mach lang subrt at NNN, this is unimplemented");
                 }
@@ -273,7 +273,7 @@ public class C8JEmulator implements Runnable{
                 x = (int) decodedInstructions[1];
                 n = (byte) (instruction & 0xFF);
                 vRegisters[x] = n;
-                logger.debug("v[%d] = %x now", x, n);
+                logger.debug("v[{}] = {} now", x, Integer.toHexString(n & 0xFF));
                 //System.out.printf("v[%d] = %x now\n", x, n);
                 break;
             case 0x7:
@@ -283,7 +283,7 @@ public class C8JEmulator implements Runnable{
                 n = (byte) (instruction & 0xFF);
                 vRegisters[x] += n;
                 //System.out.printf("v[%d] = %x now\n", x, n);
-                logger.debug("v[%d] = %x now", x, n);
+                logger.debug("v[{}] = {} now", x, Integer.toHexString(vRegisters[x] & 0xFF));
                 break;
             case 0x8:
                 if (decodedInstructions[3] == 0x0) {
@@ -329,7 +329,7 @@ public class C8JEmulator implements Runnable{
                     vRegisters[x] += vRegisters[y];
                     vRegisters[0xf] = 0;//why am i here ? todo check
                     //System.out.printf("v[%x] = v[%x] + v[%x] = %x, carry = %x\n", x, x, y, vRegisters[x],vRegisters[0xf]);
-                    logger.debug("v[%x] = v[%x] + v[%x] = %x, carry = %x", x, x, y, vRegisters[x],vRegisters[0xf]);
+                    logger.debug("v[{}] = v[{}] + v[{}] = {}, carry = {}", Integer.toHexString(x), Integer.toHexString(x), Integer.toHexString(y), Integer.toHexString(vRegisters[x] & 0xFF), Integer.toHexString(vRegisters[0xf] & 0xFF));
 
                 } else if (decodedInstructions[3] == 0x5) {
                     //System.out.println("8XY5: VX=VX-VY");
@@ -343,7 +343,7 @@ public class C8JEmulator implements Runnable{
                     }
                     vRegisters[x] = (byte) (vRegisters[x] - vRegisters[y]);
                     //System.out.printf("v[%x] = v[%x] - v[%x] = %x, carry = %x\n", x, x, y, vRegisters[x],vRegisters[0xf]);
-                    logger.debug("v[%x] = v[%x] - v[%x] = %x, carry = %x", x, x, y, vRegisters[x],vRegisters[0xf]);
+                    logger.debug("v[{}] = v[{}] - v[{}] = {}, carry = {}", Integer.toHexString(x), Integer.toHexString(x), Integer.toHexString(y), Integer.toHexString(vRegisters[x] & 0xFF), Integer.toHexString(vRegisters[0xf] & 0xFF));
 
                 } else if (decodedInstructions[3] == 0x6) { // Ambiguous instruction, doing original!
                     //System.out.println("8XY6: VX shiftRight");
@@ -358,7 +358,7 @@ public class C8JEmulator implements Runnable{
                     }
                     vRegisters[x] = (byte) (vRegisters[x] >> 1);
                     //System.out.printf("VX now = %x, VF = %x\n", vRegisters[x], vRegisters[0xf]);
-                    logger.debug("VX now = %x, VF = %x", vRegisters[x], vRegisters[0xf]);
+                    logger.debug("VX now = {}, VF = {}", Integer.toHexString(vRegisters[x] & 0xFF), Integer.toHexString(vRegisters[0xf] & 0xFF));
                 } else if (decodedInstructions[3] == 0x7) {
                     //System.out.println("8XY5: VX=VY-VX");
                     logger.debug("8XY5: VX=VY-VX");
@@ -371,7 +371,7 @@ public class C8JEmulator implements Runnable{
                     }
                     vRegisters[x] = (byte) (vRegisters[y] - vRegisters[x]);
                     //System.out.printf("v[%x] = v[%x] - v[%x] = %x, carry = %x\n", x, y, x, vRegisters[x],vRegisters[0xf]);
-                    logger.debug("v[%x] = v[%x] - v[%x] = %x, carry = %x", x, y, x, vRegisters[x],vRegisters[0xf]);
+                    logger.debug("v[{}] = v[{}] - v[{}] = {}, carry = {}", Integer.toHexString(x), Integer.toHexString(y), Integer.toHexString(x), Integer.toHexString(vRegisters[x] & 0xFF), Integer.toHexString(vRegisters[0xf] & 0xFF));
 
                 } else if (decodedInstructions[3] == 0xE) {/// Ambiguous instruction, doing original!
                     //System.out.println("8XYE: VX shiftLeft");
@@ -385,7 +385,7 @@ public class C8JEmulator implements Runnable{
                         vRegisters[0xf] = 0;
                     }
                     vRegisters[x] = (byte) (vRegisters[x] << 1);
-                    logger.debug("VX now = %x, VF = %x", vRegisters[x], vRegisters[0xf]);
+                    logger.debug("VX now = {}, VF = {}", Integer.toHexString(vRegisters[x] & 0xFF), Integer.toHexString(vRegisters[0xf] & 0xFF));
                 } else {
                     throw new Exception(String.format("%x decoded intr unimplemented %n", instruction)); // TODO make
                                                                                                          // custom
@@ -570,7 +570,7 @@ public class C8JEmulator implements Runnable{
             soundTimer--;
         }
         emuTimeInstant = batchEnd;
-        logger.debug(String.format("Batch ran %d instructions", iCounter));
+        logger.debug("Batch ran {} instructions", iCounter);
         //return iCounter;
     }
 
