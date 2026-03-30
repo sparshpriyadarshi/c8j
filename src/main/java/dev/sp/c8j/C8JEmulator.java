@@ -14,6 +14,8 @@ import java.util.Scanner;
 import java.util.Stack;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import ch.qos.logback.classic.Level;
 /**
  * 
  * A CHIP-8 emulator
@@ -75,7 +77,8 @@ public class C8JEmulator implements Runnable{
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/tim-c8-logo.ch8"; 
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/persontest.ch8"; 
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/kbtest.ch8"; // TODO this path can be
-    public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/corax+.ch8"; 
+   // public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/corax+.ch8"; 
+    public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src\\main\\resources\\binaries\\corax-vx-overflow-only.ch8"; 
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/flagstest.ch8"; 
                                                                                                         // done better
     public static HexFormat HEX_LINEAR_FORMATTER = HexFormat.ofDelimiter(":").withUpperCase().withPrefix("0x");
@@ -174,7 +177,7 @@ public class C8JEmulator implements Runnable{
         instruction = (short) (instruction << Byte.SIZE);
         instruction = (short) (instruction | memory[programCounter + 1] & 0xFF);
 
-        logger.debug("Fetched instruction@PC=%4x = %4x\n",programCounter, instruction);
+        logger.debug("Fetched instruction@PC=%4x = %4x",programCounter, instruction);
 
         programCounter += INSTRUCTION_WIDTH;
 
@@ -319,12 +322,12 @@ public class C8JEmulator implements Runnable{
                     int vy = vRegisters[y];
                     int sum = vx + vy;
                     if (sum > 0xFF) { // 255
-                        vRegisters[0xf] = 1;
+                        vRegisters[0xf] = 1;//TODO check, 
                     } else {
                         vRegisters[0xf] = 0;
                     }
                     vRegisters[x] += vRegisters[y];
-                    vRegisters[0xf] = 0;
+                    vRegisters[0xf] = 0;//why am i here ? todo check
                     //System.out.printf("v[%x] = v[%x] + v[%x] = %x, carry = %x\n", x, x, y, vRegisters[x],vRegisters[0xf]);
                     logger.debug("v[%x] = v[%x] + v[%x] = %x, carry = %x", x, x, y, vRegisters[x],vRegisters[0xf]);
 
@@ -658,6 +661,7 @@ public class C8JEmulator implements Runnable{
         System.out.println("Running C8MJ... | Current time = " + LocalDateTime.now());
         
         C8JEmulator emu;
+        ((ch.qos.logback.classic.Logger) logger).setLevel(Level.DEBUG);
         try {
             emu = new C8JEmulator();
         } catch (IOException e) {
