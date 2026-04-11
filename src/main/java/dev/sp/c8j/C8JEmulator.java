@@ -52,7 +52,7 @@ public class C8JEmulator implements Runnable{
     public EMU_STATE state;
     private byte[] program;                          // Just a program, not in memory...
     private byte[] memory;                           // 
-    private byte[] vRegisters;                       // V registers 8 bit
+    private short[] vRegisters;                       // V registers 8 bit
     private short iRegister;                         // the I register 16 bit
     private Stack<Integer> stack;                    // 16-bit wide atleast 12 deep...
     private int programCounter;                      // the Program Counter
@@ -88,7 +88,7 @@ public class C8JEmulator implements Runnable{
 
     public C8JEmulator() throws IOException {
         // initialize empty registers V0 to VF, I, Stack
-        vRegisters = new byte[NUM_V_REGISTERS];
+        vRegisters = new short[NUM_V_REGISTERS];
         iRegister = 0;
         stack = new Stack<>();
         programCounter = 0;
@@ -272,8 +272,8 @@ public class C8JEmulator implements Runnable{
                 logger.debug("6XNN: set VX = NN");
                 x = (int) decodedInstructions[1];
                 n = (byte) (instruction & 0xFF);
-                vRegisters[x] = n;
-                logger.debug("v[{}] = {} now", x, Integer.toHexString(n & 0xFF));
+                vRegisters[x] = (short)(n&0xFF);
+                logger.debug("v[{}] = {} now", x, Integer.toHexString(vRegisters[x]));
                 //System.out.printf("v[%d] = %x now\n", x, n);
                 break;
             case 0x7:
@@ -282,6 +282,7 @@ public class C8JEmulator implements Runnable{
                 x = (int) decodedInstructions[1];
                 n = (byte) (instruction & 0xFF);
                 vRegisters[x] += n;
+                vRegisters[x] &= 0xFF;
                 //System.out.printf("v[%d] = %x now\n", x, n);
                 logger.debug("v[{}] = {} now", x, Integer.toHexString(vRegisters[x] & 0xFF));
                 break;
@@ -327,6 +328,7 @@ public class C8JEmulator implements Runnable{
                         vRegisters[0xf] = 0;
                     }
                     vRegisters[x] += vRegisters[y];
+                    vRegisters[x] &= 0xFF;
                     vRegisters[0xf] = 0;//why am i here ? todo check
                     //System.out.printf("v[%x] = v[%x] + v[%x] = %x, carry = %x\n", x, x, y, vRegisters[x],vRegisters[0xf]);
                     logger.debug("v[{}] = v[{}] + v[{}] = {}, carry = {}", Integer.toHexString(x), Integer.toHexString(x), Integer.toHexString(y), Integer.toHexString(vRegisters[x] & 0xFF), Integer.toHexString(vRegisters[0xf] & 0xFF));
@@ -373,7 +375,9 @@ public class C8JEmulator implements Runnable{
                     //System.out.printf("v[%x] = v[%x] - v[%x] = %x, carry = %x\n", x, y, x, vRegisters[x],vRegisters[0xf]);
                     logger.debug("v[{}] = v[{}] - v[{}] = {}, carry = {}", Integer.toHexString(x), Integer.toHexString(y), Integer.toHexString(x), Integer.toHexString(vRegisters[x] & 0xFF), Integer.toHexString(vRegisters[0xf] & 0xFF));
 
-                } else if (decodedInstructions[3] == 0xE) {/// Ambiguous instruction, doing original!
+                } else if (decodedInstructions[3] == 0xE) {
+                    //logical shift NOT arithmetic
+                    // Ambiguous instruction, doing original!
                     //System.out.println("8XYE: VX shiftLeft");
                     logger.debug("8XYE: VX shiftLeft");
                     x = (int) decodedInstructions[1];
@@ -412,7 +416,7 @@ public class C8JEmulator implements Runnable{
             case 0xB:
                 // Ambiguous instruction!
                 //System.out.printf("BNNN: jump w/ offset: V0 + NNN\n");
-                byte v0 = vRegisters[0x0];
+                short v0 = vRegisters[0x0];
                 short addr = (short) (instruction & 0x0FFF);
                 programCounter = v0 + addr;
                 //System.out.println("pc is now =" + programCounter);
@@ -508,7 +512,7 @@ public class C8JEmulator implements Runnable{
                     // current decision: will go back on PC for now
                     programCounter -= INSTRUCTION_WIDTH;
                 }else if(decodedInstructions[2] == 0x2 && decodedInstructions[3] == 0x9){
-                    byte vx = vRegisters[x];
+                    short vx = vRegisters[x];
                     iRegister = (short) ((int) FONT_MEM_BASE_IDX + (5 * (int) vx));
                 }else if(decodedInstructions[2] == 0x3 && decodedInstructions[3] == 0x3){
                     //BCD VX at I
@@ -521,7 +525,7 @@ public class C8JEmulator implements Runnable{
                     //System.out.println("store to memory[Iregister] from v0 to vx incl");
                     x = decodedInstructions[1] & 0xFF;
                     for(int idx = 0; idx <= x; idx++){
-                        memory[iRegister + idx] = vRegisters[idx];
+                        memory[iRegister + idx] = (byte)(vRegisters[idx] & 0xFF);
                     }
 
                 }else if(decodedInstructions[2] == 0x6 && decodedInstructions[3] == 0x5){//ambi
