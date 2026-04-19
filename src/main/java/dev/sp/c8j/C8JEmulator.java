@@ -53,8 +53,8 @@ public class C8JEmulator implements Runnable{
     private byte[] program;                          // Just a program, not in memory...
     private int[] memory8;                           // 
     private int[] vRegisters8;                       // V registers 8 bit
-    private int iRegister16;                           // the I register 16 bit
-    private Stack<Integer> stack;                    // 16-bit wide atleast 12 deep...
+    private int iRegister16;                         // the I register 16 bit
+    private Stack<Integer> stack16;                  // 16-bit wide atleast 12 deep...
     private int programCounter;                      // the Program Counter
     private byte delayTimer;                         // another U8bit value, counts down at 60hz
     private byte soundTimer;                         // if >= 0x02 emit a tone
@@ -90,7 +90,7 @@ public class C8JEmulator implements Runnable{
         // initialize empty registers V0 to VF, I, Stack
         vRegisters8 = new int[NUM_V_REGISTERS];
         iRegister16 = 0;
-        stack = new Stack<>();
+        stack16 = new Stack<>();
         programCounter = 0;
         delayTimer = (byte)0xFF;//TODO set off timers
         soundTimer = (byte)0xFF;//TODO set of timers
@@ -218,7 +218,7 @@ public class C8JEmulator implements Runnable{
                     displayLines = new long[DISP_H];
                 } else if (decodedInstructions[1] == 0x0 && decodedInstructions[2] == 0xE
                         && decodedInstructions[3] == 0xE) {// 00EE
-                    programCounter = stack.pop();
+                    programCounter = stack16.pop();
                     logger.debug("00EE ret from subrt to {}", Integer.toHexString(programCounter));
                 } else { // 0NNN calls machine language subroutine at NNN,not implemented here...
                     throw new Exception("0NNN exec mach lang subrt at NNN, this is unimplemented");
@@ -235,7 +235,7 @@ public class C8JEmulator implements Runnable{
             case 0x2:
                 //System.out.println("2NNN call subrt at NNN");
                 //System.out.printf("from addr=%x (ret addr)\n", programCounter);
-                stack.add(programCounter); // used later for returning...
+                stack16.add(programCounter); // used later for returning...
                 programCounter = instruction & 0xFFF;
                 //System.out.printf("to addr=%x\n", programCounter);
                 break;
@@ -762,8 +762,8 @@ public class C8JEmulator implements Runnable{
         return registers;
     }
 
-    public Stack<Integer> getStack(){
-        return stack;
+    public Stack<Integer> getStack16(){
+        return stack16;
     }
     //TODO: decide if hexing dehexing should here or client...
     public int[] getMemory8(){
