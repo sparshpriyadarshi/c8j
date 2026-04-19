@@ -53,7 +53,7 @@ public class C8JEmulator implements Runnable{
     private byte[] program;                          // Just a program, not in memory...
     private byte[] memory;                           // 
     private byte[] vRegisters;                       // V registers 8 bit
-    private short iRegister;                         // the I register 16 bit
+    private int iRegister;                           // the I register 16 bit
     private Stack<Integer> stack;                    // 16-bit wide atleast 12 deep...
     private int programCounter;                      // the Program Counter
     private byte delayTimer;                         // another U8bit value, counts down at 60hz
@@ -77,8 +77,8 @@ public class C8JEmulator implements Runnable{
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/tim-c8-logo.ch8"; 
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/persontest.ch8"; 
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/kbtest.ch8"; // TODO this path can be
-    //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/corax+.ch8"; 
-    public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src\\main\\resources\\binaries\\corax-vx-overflow-only.ch8"; 
+    public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/corax+.ch8"; 
+    //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src\\main\\resources\\binaries\\corax-vx-overflow-only.ch8"; 
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/flagstest.ch8"; 
                                                                                                         // done better
     public static HexFormat HEX_LINEAR_FORMATTER = HexFormat.ofDelimiter(":").withUpperCase().withPrefix("0x");
@@ -406,7 +406,7 @@ public class C8JEmulator implements Runnable{
                 break;
             case 0xA:
                 //System.out.printf("ANNN: Set I to NNN");
-                iRegister = (short) (instruction & 0x0FFF);
+                iRegister = (int) (instruction & 0x0FFF);
                 //System.out.printf("I = %x now\n", iRegister);
                 break;
             case 0xB:
@@ -439,7 +439,7 @@ public class C8JEmulator implements Runnable{
                 // sprite's start pos can wrap around...
                 int posX = (vRegisters[x] & (DISP_W - 1));
                 int posY = (vRegisters[y] % DISP_H); // vy & 31 is another way...
-                short address = iRegister;
+                int address = iRegister;
 
                 vRegisters[0xf] = 0;
 
@@ -500,7 +500,7 @@ public class C8JEmulator implements Runnable{
                 } else if (decodedInstructions[2] == 0x1 && decodedInstructions[3] == 0x8) {
                     soundTimer = (byte) (vRegisters[x] & 0xFF);
                 }else if (decodedInstructions[2] == 0x1 && decodedInstructions[3] == 0xE) {
-                    iRegister += (short) (vRegisters[x] & 0xFF); //undocumented detail, vf not affected here ideally...
+                    iRegister += (int) (vRegisters[x] & 0xFF); //undocumented detail, vf not affected here ideally...
                 }else if (decodedInstructions[2] == 0x0 && decodedInstructions[3] == 0xA) {//get key
                     //timers keep running, wait for key input.... 
                     // either BLOCK here, or decr pc and keep going.... 
@@ -509,7 +509,7 @@ public class C8JEmulator implements Runnable{
                     programCounter -= INSTRUCTION_WIDTH;
                 }else if(decodedInstructions[2] == 0x2 && decodedInstructions[3] == 0x9){
                     byte vx = vRegisters[x];
-                    iRegister = (short) ((int) FONT_MEM_BASE_IDX + (5 * (int) vx));
+                    iRegister = ((int) FONT_MEM_BASE_IDX + (5 * (int) vx));
                 }else if(decodedInstructions[2] == 0x3 && decodedInstructions[3] == 0x3){
                     //BCD VX at I
                     int vx = (int)(vRegisters[x] & 0xFF);//TODO should vRegisters always be preloaded & FF ? this looks repetetive, sign extension sigh
