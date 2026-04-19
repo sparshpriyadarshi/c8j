@@ -53,7 +53,7 @@ public class C8JEmulator implements Runnable{
     private byte[] program;                          // Just a program, not in memory...
     private byte[] memory;                           // 
     private byte[] vRegisters;                       // V registers 8 bit
-    private short iRegister;                         // the I register 16 bit
+    private int iRegister16;                           // the I register 16 bit
     private Stack<Integer> stack;                    // 16-bit wide atleast 12 deep...
     private int programCounter;                      // the Program Counter
     private byte delayTimer;                         // another U8bit value, counts down at 60hz
@@ -77,8 +77,8 @@ public class C8JEmulator implements Runnable{
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/tim-c8-logo.ch8"; 
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/persontest.ch8"; 
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/kbtest.ch8"; // TODO this path can be
-    //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/corax+.ch8"; 
-    public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src\\main\\resources\\binaries\\corax-vx-overflow-only.ch8"; 
+    public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/corax+.ch8"; 
+    //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src\\main\\resources\\binaries\\corax-vx-overflow-only.ch8"; 
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/flagstest.ch8"; 
                                                                                                         // done better
     public static HexFormat HEX_LINEAR_FORMATTER = HexFormat.ofDelimiter(":").withUpperCase().withPrefix("0x");
@@ -89,7 +89,7 @@ public class C8JEmulator implements Runnable{
     public C8JEmulator() throws IOException {
         // initialize empty registers V0 to VF, I, Stack
         vRegisters = new byte[NUM_V_REGISTERS];
-        iRegister = 0;
+        iRegister16 = 0;
         stack = new Stack<>();
         programCounter = 0;
         delayTimer = (byte)0xFF;//TODO set off timers
@@ -406,7 +406,7 @@ public class C8JEmulator implements Runnable{
                 break;
             case 0xA:
                 //System.out.printf("ANNN: Set I to NNN");
-                iRegister = (short) (instruction & 0x0FFF);
+                iRegister16 = (int) (instruction & 0x0FFF);
                 //System.out.printf("I = %x now\n", iRegister);
                 break;
             case 0xB:
@@ -439,7 +439,7 @@ public class C8JEmulator implements Runnable{
                 // sprite's start pos can wrap around...
                 int posX = (vRegisters[x] & (DISP_W - 1));
                 int posY = (vRegisters[y] % DISP_H); // vy & 31 is another way...
-                short address = iRegister;
+                int address = iRegister16;
 
                 vRegisters[0xf] = 0;
 
@@ -500,7 +500,7 @@ public class C8JEmulator implements Runnable{
                 } else if (decodedInstructions[2] == 0x1 && decodedInstructions[3] == 0x8) {
                     soundTimer = (byte) (vRegisters[x] & 0xFF);
                 }else if (decodedInstructions[2] == 0x1 && decodedInstructions[3] == 0xE) {
-                    iRegister += (short) (vRegisters[x] & 0xFF); //undocumented detail, vf not affected here ideally...
+                    iRegister16 += (int) (vRegisters[x] & 0xFF); //undocumented detail, vf not affected here ideally...
                 }else if (decodedInstructions[2] == 0x0 && decodedInstructions[3] == 0xA) {//get key
                     //timers keep running, wait for key input.... 
                     // either BLOCK here, or decr pc and keep going.... 
@@ -509,19 +509,19 @@ public class C8JEmulator implements Runnable{
                     programCounter -= INSTRUCTION_WIDTH;
                 }else if(decodedInstructions[2] == 0x2 && decodedInstructions[3] == 0x9){
                     byte vx = vRegisters[x];
-                    iRegister = (short) ((int) FONT_MEM_BASE_IDX + (5 * (int) vx));
+                    iRegister16 = ((int) FONT_MEM_BASE_IDX + (5 * (int) vx));
                 }else if(decodedInstructions[2] == 0x3 && decodedInstructions[3] == 0x3){
                     //BCD VX at I
                     int vx = (int)(vRegisters[x] & 0xFF);//TODO should vRegisters always be preloaded & FF ? this looks repetetive, sign extension sigh
-                    memory[iRegister + 0] = (byte)(vx / 100);
-                    memory[iRegister + 1] = (byte)((vx % 100) / 10);
-                    memory[iRegister + 2] = (byte)(vx % 10);                    
+                    memory[iRegister16 + 0] = (byte)(vx / 100);
+                    memory[iRegister16 + 1] = (byte)((vx % 100) / 10);
+                    memory[iRegister16 + 2] = (byte)(vx % 10);                    
                     
                 }else if(decodedInstructions[2] == 0x5 && decodedInstructions[3] == 0x5){//ambi
                     //System.out.println("store to memory[Iregister] from v0 to vx incl");
                     x = decodedInstructions[1] & 0xFF;
                     for(int idx = 0; idx <= x; idx++){
-                        memory[iRegister + idx] = vRegisters[idx];
+                        memory[iRegister16 + idx] = vRegisters[idx];
                     }
 
                 }else if(decodedInstructions[2] == 0x6 && decodedInstructions[3] == 0x5){//ambi
@@ -529,7 +529,7 @@ public class C8JEmulator implements Runnable{
                     logger.debug("load from memory from v0 to vx incl");
                     x = decodedInstructions[1] & 0xFF;
                     for(int idx = 0; idx <= x; idx++){
-                       vRegisters[idx] = memory[iRegister + idx];
+                       vRegisters[idx] = memory[iRegister16 + idx];
                     }
                     //modern impl, I register remains unchanged here.... legacy would require I to update with idx
                 }  else {
@@ -600,7 +600,7 @@ public class C8JEmulator implements Runnable{
 
         sb.append(String.format("Emulator Object: %n"));
         sb.append(String.format("State: %s %n", state));
-        sb.append(String.format("R- I Register: %d%n", iRegister));
+        sb.append(String.format("R- I Register: %d%n", iRegister16));
 
         sb.append(String.format("R- V Registers: %n"));
         for (int i = 0; i < 16; i++) {
@@ -626,7 +626,7 @@ public class C8JEmulator implements Runnable{
     }
     public String dumpRegs(){
         StringBuilder sb = new StringBuilder();
-        sb.append(String.format("I = %d%n", iRegister));
+        sb.append(String.format("I = %d%n", iRegister16));
         for (int i = 0; i < 16; i++) {
             sb.append(String.format("V%02d|V%X = %03d or #%s%n", i, i, vRegisters[i],
                     HEX_LINEAR_FORMATTER.toHexDigits(vRegisters[i])));
@@ -769,7 +769,7 @@ public class C8JEmulator implements Runnable{
     }
 
     public int getIRegister(){
-        return (int)(iRegister & 0xFFFF);
+        return (int)(iRegister16 & 0xFFFF);
     }
 
     public int getProgramCounter() {
