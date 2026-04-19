@@ -51,7 +51,7 @@ public class C8JEmulator implements Runnable{
     public Instant emuTimeInstant;
     public EMU_STATE state;
     private byte[] program;                          // Just a program, not in memory...
-    private byte[] memory;                           // 
+    private int[] memory8;                           // 
     private int[] vRegisters8;                       // V registers 8 bit
     private int iRegister16;                           // the I register 16 bit
     private Stack<Integer> stack;                    // 16-bit wide atleast 12 deep...
@@ -94,7 +94,7 @@ public class C8JEmulator implements Runnable{
         programCounter = 0;
         delayTimer = (byte)0xFF;//TODO set off timers
         soundTimer = (byte)0xFF;//TODO set of timers
-        memory = new byte[MAX_ADDRESSIBLE_BYTES];
+        memory8 = new int[MAX_ADDRESSIBLE_BYTES];
 
         loadFonts();
         // get hold of a "default" program to run
@@ -143,18 +143,20 @@ public class C8JEmulator implements Runnable{
         };
         int fontIdx = 0;
         for (int idx = FONT_MEM_BASE_IDX; idx <= FONT_MEM_LAST_IDX; idx++) {
-            memory[idx] = fonts[fontIdx]; fontIdx++;
+            memory8[idx] = fonts[fontIdx]; fontIdx++;
         }
         
     }
     private int loadProgram() {
         // initialize memory with program bytes
         for (int idx = PROGRAM_MEM_BASE_IDX; idx < PROGRAM_MEM_BASE_IDX + program.length; idx++) {
-            memory[idx] = program[idx - PROGRAM_MEM_BASE_IDX];
+            memory8[idx] = program[idx - PROGRAM_MEM_BASE_IDX];
         }
 
         System.out.println("Loaded program into memory, head: ");
-        System.out.println(HEX_LINEAR_FORMATTER.formatHex(memory, PROGRAM_MEM_BASE_IDX, PROGRAM_MEM_BASE_IDX + 12));
+        for (int idx = PROGRAM_MEM_BASE_IDX; idx < PROGRAM_MEM_BASE_IDX + 12; idx++) {
+            System.out.println("M: "+ Integer.toHexString(memory8[idx]));
+        }
 
         return PROGRAM_MEM_BASE_IDX;
     }
@@ -173,9 +175,9 @@ public class C8JEmulator implements Runnable{
 
         // TODO: investigate this and idiomatic refactors, java has signed bytes
         instruction = 0x0000;
-        instruction = (short) (instruction | memory[programCounter] & 0xFF);
+        instruction = (short) (instruction | memory8[programCounter] & 0xFF);
         instruction = (short) (instruction << Byte.SIZE);
-        instruction = (short) (instruction | memory[programCounter + 1] & 0xFF);
+        instruction = (short) (instruction | memory8[programCounter + 1] & 0xFF);
 
         logger.debug("Fetched instruction@PC={} = {}", Integer.toHexString(programCounter), Integer.toHexString(instruction & 0xFFFF));
 
@@ -446,7 +448,7 @@ public class C8JEmulator implements Runnable{
                 int spriteLineIdx = 0;
                 int displayLineIdx = posY + spriteLineIdx;
                 while (spriteLineIdx < n && displayLineIdx < DISP_H) {
-                    long spriteLine = (long) memory[address + spriteLineIdx];
+                    long spriteLine = (long) memory8[address + spriteLineIdx];
 
                     spriteLine = (spriteLine & 0xFF) << 56; // &FF is to nullify sign extension that might have happened
                                                             // in the above case
@@ -513,15 +515,15 @@ public class C8JEmulator implements Runnable{
                 }else if(decodedInstructions[2] == 0x3 && decodedInstructions[3] == 0x3){
                     //BCD VX at I
                     int vx = (int)(vRegisters8[x] & 0xFF);//TODO should vRegisters always be preloaded & FF ? this looks repetetive, sign extension sigh
-                    memory[iRegister16 + 0] = (byte)(vx / 100);
-                    memory[iRegister16 + 1] = (byte)((vx % 100) / 10);
-                    memory[iRegister16 + 2] = (byte)(vx % 10);                    
+                    memory8[iRegister16 + 0] = (byte)(vx / 100);
+                    memory8[iRegister16 + 1] = (byte)((vx % 100) / 10);
+                    memory8[iRegister16 + 2] = (byte)(vx % 10);                    
                     
                 }else if(decodedInstructions[2] == 0x5 && decodedInstructions[3] == 0x5){//ambi
                     //System.out.println("store to memory[Iregister] from v0 to vx incl");
                     x = decodedInstructions[1] & 0xFF;
                     for(int idx = 0; idx <= x; idx++){
-                        memory[iRegister16 + idx] = (byte)(vRegisters8[idx]&0xFF);
+                        memory8[iRegister16 + idx] = (byte)(vRegisters8[idx]&0xFF);
                     }
 
                 }else if(decodedInstructions[2] == 0x6 && decodedInstructions[3] == 0x5){//ambi
@@ -529,7 +531,7 @@ public class C8JEmulator implements Runnable{
                     logger.debug("load from memory from v0 to vx incl");
                     x = decodedInstructions[1] & 0xFF;
                     for(int idx = 0; idx <= x; idx++){
-                       vRegisters8[idx] = memory[iRegister16 + idx];
+                       vRegisters8[idx] = memory8[iRegister16 + idx];
                     }
                     //modern impl, I register remains unchanged here.... legacy would require I to update with idx
                 }  else {
@@ -618,7 +620,7 @@ public class C8JEmulator implements Runnable{
         for (int idx = 0; idx < 8; idx++) {
             sb.append(String.format("M- %d|0x%s = #%s%n", idx,
                     HEX_LINEAR_FORMATTER.toHexDigits(PROGRAM_MEM_BASE_IDX + idx),
-                    HEX_LINEAR_FORMATTER.toHexDigits(memory[PROGRAM_MEM_BASE_IDX + idx])));
+                    HEX_LINEAR_FORMATTER.toHexDigits(memory8[PROGRAM_MEM_BASE_IDX + idx])));
         }
 
         sb.append(String.format("-- .:..%n"));
@@ -646,7 +648,7 @@ public class C8JEmulator implements Runnable{
     }
     public static void testFonts(C8JEmulator emu){
         for(int i = 0; i < 80; i++){
-            System.out.printf("Font byte = %x %n", emu.memory[FONT_MEM_BASE_IDX + i]);
+            System.out.printf("Font byte = %x %n", emu.memory8[FONT_MEM_BASE_IDX + i]);
         }
     }
 
@@ -764,8 +766,8 @@ public class C8JEmulator implements Runnable{
         return stack;
     }
     //TODO: decide if hexing dehexing should here or client...
-    public byte[] getMemory(){
-        return memory;
+    public int[] getMemory8(){
+        return memory8;
     }
 
     public int getIRegister(){
