@@ -77,8 +77,8 @@ public class C8JEmulator implements Runnable{
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/tim-c8-logo.ch8"; 
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/persontest.ch8"; 
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/kbtest.ch8"; // TODO this path can be
-    //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/corax+.ch8"; 
-    public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src\\main\\resources\\binaries\\corax-vx-overflow-only.ch8"; 
+    public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/corax+.ch8"; 
+    //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src\\main\\resources\\binaries\\corax-vx-overflow-only.ch8"; 
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/flagstest.ch8"; 
                                                                                                         // done better
     public static HexFormat HEX_LINEAR_FORMATTER = HexFormat.ofDelimiter(":").withUpperCase().withPrefix("0x");
@@ -284,7 +284,7 @@ public class C8JEmulator implements Runnable{
                 vRegisters[x] += n;
                 vRegisters[x] &= 0xFF;
                 //System.out.printf("v[%d] = %x now\n", x, n);
-                logger.debug("v[{}] = {} now", x, Integer.toHexString(vRegisters[x] & 0xFF));
+                logger.debug("v[{}] = {} now", x, Integer.toHexString(vRegisters[x]));
                 break;
             case 0x8:
                 if (decodedInstructions[3] == 0x0) {
@@ -358,7 +358,7 @@ public class C8JEmulator implements Runnable{
                     } else {
                         vRegisters[0xf] = 0;
                     }
-                    vRegisters[x] = (byte) (vRegisters[x] >> 1);
+                    vRegisters[x] = (short) ((vRegisters[x]&0xFF >> 1)&0xFF);
                     //System.out.printf("VX now = %x, VF = %x\n", vRegisters[x], vRegisters[0xf]);
                     logger.debug("VX now = {}, VF = {}", Integer.toHexString(vRegisters[x] & 0xFF), Integer.toHexString(vRegisters[0xf] & 0xFF));
                 } else if (decodedInstructions[3] == 0x7) {
@@ -388,7 +388,7 @@ public class C8JEmulator implements Runnable{
                     } else {
                         vRegisters[0xf] = 0;
                     }
-                    vRegisters[x] = (byte) (vRegisters[x] << 1);
+                    vRegisters[x] = (short) ((vRegisters[x]&0xFF << 1)&0xFF);
                     logger.debug("VX now = {}, VF = {}", Integer.toHexString(vRegisters[x] & 0xFF), Integer.toHexString(vRegisters[0xf] & 0xFF));
                 } else {
                     throw new Exception(String.format("%x decoded intr unimplemented %n", instruction)); // TODO make
