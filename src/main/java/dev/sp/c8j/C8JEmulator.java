@@ -59,7 +59,7 @@ public class C8JEmulator implements Runnable{
     private byte delayTimer;                         // another U8bit value, counts down at 60hz
     private byte soundTimer;                         // if >= 0x02 emit a tone
 
-    private short instruction;                       // 2 byte instruction
+    private int instruction16;                       // 2 byte instruction
     private byte[] decodedInstructions;              // intermediate use only
 
     private long[] displayLines;                     // monochrome display 64 x 32 pixels
@@ -101,7 +101,7 @@ public class C8JEmulator implements Runnable{
         readCh8Binary(Paths.get(DEFAULT_PROGRAM_SRC_FILEPATH));
         programCounter = loadProgram();
 
-        instruction = 0;
+        instruction16 = 0;
         decodedInstructions = new byte[4];
 
         displayLines = new long[DISP_H]; //long's width = 64
@@ -169,24 +169,24 @@ public class C8JEmulator implements Runnable{
 
     }
 
-    private short fetch() {
+    private int fetch() {
 
         assert programCounter >= PROGRAM_MEM_BASE_IDX && programCounter <= PROGRAM_MEM_LAST_IDX : "Program Counter out of bounds: " + programCounter;
 
         // TODO: investigate this and idiomatic refactors, java has signed bytes
-        instruction = 0x0000;
-        instruction = (short) (instruction | memory8[programCounter] & 0xFF);
-        instruction = (short) (instruction << Byte.SIZE);
-        instruction = (short) (instruction | memory8[programCounter + 1] & 0xFF);
+        instruction16 = 0x0000;
+        instruction16 = (short) (instruction16 | memory8[programCounter] & 0xFF);
+        instruction16 = (short) (instruction16 << Byte.SIZE);
+        instruction16 = (short) (instruction16 | memory8[programCounter + 1] & 0xFF);
 
-        logger.debug("Fetched instruction@PC={} = {}", Integer.toHexString(programCounter), Integer.toHexString(instruction & 0xFFFF));
+        logger.debug("Fetched instruction@PC={} = {}", Integer.toHexString(programCounter), Integer.toHexString(instruction16 & 0xFFFF));
 
         programCounter += INSTRUCTION_WIDTH;
 
-        return instruction;
+        return instruction16;
     }
 
-    private byte[] decode(short instruction) { // fetch vs decode is irrelevant in this trivial use case of chip8...
+    private byte[] decode(int instruction) { // fetch vs decode is irrelevant in this trivial use case of chip8...
         //String instructionHexString = HEX_LINEAR_FORMATTER.toHexDigits(instruction);
         //System.out.println("Decoding instruction: " + instructionHexString);
         
@@ -227,7 +227,7 @@ public class C8JEmulator implements Runnable{
             case 0x1:
                 //System.out.println("1NNN instr Jump to NNN");
                 //System.out.printf("from addr=%x\n", programCounter);
-                programCounter = instruction & 0xFFF;
+                programCounter = instruction16 & 0xFFF;
                 // or
                 // pc = instruction & ((1 << 12) - 1);
                 //System.out.printf("to addr=%x\n", programCounter);
@@ -236,13 +236,13 @@ public class C8JEmulator implements Runnable{
                 //System.out.println("2NNN call subrt at NNN");
                 //System.out.printf("from addr=%x (ret addr)\n", programCounter);
                 stack16.add(programCounter); // used later for returning...
-                programCounter = instruction & 0xFFF;
+                programCounter = instruction16 & 0xFFF;
                 //System.out.printf("to addr=%x\n", programCounter);
                 break;
             case 0x3:
                 //System.out.printf("3XNN: skip if VX is NN");
                 x = (int) decodedInstructions[1];
-                n = (byte) (instruction & 0xFF);
+                n = (byte) (instruction16 & 0xFF);
                 //System.out.printf("vx=%x ? n=%x \n", vRegisters[x], n);
                 if (vRegisters8[x] == n) {
                     //System.out.printf("skipped\n");
@@ -252,7 +252,7 @@ public class C8JEmulator implements Runnable{
             case 0x4:
                 //System.out.printf("4XNN: skip if VX not NN");
                 x = (int) decodedInstructions[1];
-                n = (byte) (instruction & 0xFF);
+                n = (byte) (instruction16 & 0xFF);
                 //System.out.printf("vx=%x ? n=%x \n", vRegisters[x], n);
                 if (vRegisters8[x] != n) {
                     //System.out.printf("skipped\n");
@@ -273,7 +273,7 @@ public class C8JEmulator implements Runnable{
                 //System.out.printf("6XNN: set VX = NN\n");
                 logger.debug("6XNN: set VX = NN");
                 x = (int) decodedInstructions[1];
-                n = (byte) (instruction & 0xFF);
+                n = (byte) (instruction16 & 0xFF);
                 vRegisters8[x] = n;
                 logger.debug("v[{}] = {} now", x, Integer.toHexString(n & 0xFF));
                 //System.out.printf("v[%d] = %x now\n", x, n);
@@ -282,7 +282,7 @@ public class C8JEmulator implements Runnable{
                 //System.out.printf("7XNN: VX += NN\n");
                 logger.debug("7XNN: VX += NN");
                 x = (int) decodedInstructions[1];
-                n = (byte) (instruction & 0xFF);
+                n = (byte) (instruction16 & 0xFF);
                 vRegisters8[x] += n;
                 //System.out.printf("v[%d] = %x now\n", x, n);
                 logger.debug("v[{}] = {} now", x, Integer.toHexString(vRegisters8[x] & 0xFF));
@@ -389,7 +389,7 @@ public class C8JEmulator implements Runnable{
                     vRegisters8[x] = (byte) (vRegisters8[x] << 1);
                     logger.debug("VX now = {}, VF = {}", Integer.toHexString(vRegisters8[x] & 0xFF), Integer.toHexString(vRegisters8[0xf] & 0xFF));
                 } else {
-                    throw new Exception(String.format("%x decoded intr unimplemented %n", instruction)); // TODO make
+                    throw new Exception(String.format("%x decoded intr unimplemented %n", instruction16)); // TODO make
                                                                                                          // custom
                                                                                                          // exception
 
@@ -408,14 +408,14 @@ public class C8JEmulator implements Runnable{
                 break;
             case 0xA:
                 //System.out.printf("ANNN: Set I to NNN");
-                iRegister16 = (int) (instruction & 0x0FFF);
+                iRegister16 = (int) (instruction16 & 0x0FFF);
                 //System.out.printf("I = %x now\n", iRegister);
                 break;
             case 0xB:
                 // Ambiguous instruction!
                 //System.out.printf("BNNN: jump w/ offset: V0 + NNN\n");
                 int v0 = vRegisters8[0x0];
-                short addr = (short) (instruction & 0x0FFF);
+                short addr = (short) (instruction16 & 0x0FFF);
                 programCounter = v0 + addr;
                 //System.out.println("pc is now =" + programCounter);
                 break;
@@ -423,7 +423,7 @@ public class C8JEmulator implements Runnable{
                 //System.out.printf("CXNN: random-num AND NN into VX\n");
                 Random randomizer = new Random();
                 int randInt = randomizer.nextInt();
-                byte randValue = (byte) ((randInt & 0xFF) & (instruction & 0xFF));
+                byte randValue = (byte) ((randInt & 0xFF) & (instruction16 & 0xFF));
                 vRegisters8[(int) decodedInstructions[1]] = randValue;
                 //System.out.printf("rand value in VX = %x\n", randValue);
                 break;
@@ -485,7 +485,7 @@ public class C8JEmulator implements Runnable{
                         //System.out.println("skipping next instr");
                     }
                 } else {
-                    throw new Exception(String.format("%x decoded intr unimplemented %n", instruction)); // TODO make
+                    throw new Exception(String.format("%x decoded intr unimplemented %n", instruction16)); // TODO make
                                                                                                          // custom
                                                                                                          // exception
                 }
@@ -535,13 +535,13 @@ public class C8JEmulator implements Runnable{
                     }
                     //modern impl, I register remains unchanged here.... legacy would require I to update with idx
                 }  else {
-                    throw new Exception(String.format("%x decoded intr unimplemented %n", instruction)); // TODO make
+                    throw new Exception(String.format("%x decoded intr unimplemented %n", instruction16)); // TODO make
                                                                                                          // custom
                                                                                                          // exception
                 }
                 break;
             default:
-                throw new Exception(String.format("%x decoded intr unimplemented %n", instruction));// TODO choose
+                throw new Exception(String.format("%x decoded intr unimplemented %n", instruction16));// TODO choose
                                                                                                     // approp. ex
         }
         //todo corax vx fails   
