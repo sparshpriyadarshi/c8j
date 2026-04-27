@@ -60,7 +60,7 @@ public class C8JEmulator implements Runnable{
     private byte soundTimer;                         // if >= 0x02 emit a tone
 
     private int instruction16;                       // 2 byte instruction
-    private byte[] decodedInstructions;              // intermediate use only
+    private int[] decodedInstructions;               // intermediate use only
 
     private long[] displayLines;                     // monochrome display 64 x 32 pixels
 
@@ -103,7 +103,7 @@ public class C8JEmulator implements Runnable{
         programCounter = loadProgram();
 
         instruction16 = 0;
-        decodedInstructions = new byte[4];
+        decodedInstructions = new int[4];
 
         displayLines = new long[DISP_H]; //long's width = 64
         keyPress = 'x'; //keypad should be classed 
@@ -187,25 +187,25 @@ public class C8JEmulator implements Runnable{
         return instruction16;
     }
 
-    private byte[] decode(int instruction) { // fetch vs decode is irrelevant in this trivial use case of chip8...
+    private int[] decode(int instruction) { // fetch vs decode is irrelevant in this trivial use case of chip8...
         //String instructionHexString = HEX_LINEAR_FORMATTER.toHexDigits(instruction);
         //System.out.println("Decoding instruction: " + instructionHexString);
         
         //no reason
-        decodedInstructions[0] = (byte) 0xDE; 
-        decodedInstructions[1] = (byte) 0xAD; 
-        decodedInstructions[2] = (byte) 0xBE; 
-        decodedInstructions[3] = (byte) 0xAD; 
+        decodedInstructions[0] = 0xDE; 
+        decodedInstructions[1] = 0xAD; 
+        decodedInstructions[2] = 0xBE; 
+        decodedInstructions[3] = 0xAD; 
 
-        decodedInstructions[0] = (byte)((instruction >>> 12) & 0xF); //shift to get the nibble, maskoff higher nibble, cast
-        decodedInstructions[1] = (byte)((instruction >>>  8) & 0xF); 
-        decodedInstructions[2] = (byte)((instruction >>>  4) & 0xF); 
-        decodedInstructions[3] = (byte)((instruction >>>  0) & 0xF); 
+        decodedInstructions[0] = ((instruction >>> 12) & 0xF); //shift to get the nibble, maskoff higher nibble
+        decodedInstructions[1] = ((instruction >>>  8) & 0xF); 
+        decodedInstructions[2] = ((instruction >>>  4) & 0xF); 
+        decodedInstructions[3] = ((instruction >>>  0) & 0xF); 
 
         return decodedInstructions;
     }
 
-    private void execute(byte[] decodedInstructions) throws Exception {
+    private void execute(int[] decodedInstructions) throws Exception {
         assert decodedInstructions.length == 4 : "instruction doesn't have 4 nibbles" + decodedInstructions;
 
         //System.out.printf("decoded instr = %x%x%x%x\n", decodedInstructions[0], decodedInstructions[1],decodedInstructions[2], decodedInstructions[3]);
@@ -711,7 +711,7 @@ public class C8JEmulator implements Runnable{
                     break;
                 case 'f': //reach next draw sprite instruction...
                     try {
-                        byte currentInstruction = emu.decodedInstructions[0];
+                        int currentInstruction = emu.decodedInstructions[0];
                         int maxInstructionsTillDraw = MAX_ADDRESSIBLE_BYTES; 
                         //just a safegaurd, sometimes we just infinite loop at the end of program, no more display remains
                         while(currentInstruction != 0xD && maxInstructionsTillDraw > 0){
