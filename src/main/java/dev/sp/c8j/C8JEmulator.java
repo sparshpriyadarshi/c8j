@@ -78,7 +78,8 @@ public class C8JEmulator implements Runnable{
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/persontest.ch8"; 
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/kbtest.ch8"; // TODO this path can be
     public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/corax+.ch8"; 
-    //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src\\main\\resources\\binaries\\corax-vx-overflow-only.ch8"; 
+    //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src\\main\\resources\\binaries\\corax-vx-overflow-only.ch8";
+    //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/corax+V-Overflow-Tests.ch8"; 
     //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/flagstest.ch8"; 
                                                                                                         // done better
     public static HexFormat HEX_LINEAR_FORMATTER = HexFormat.ofDelimiter(":").withUpperCase().withPrefix("0x");
@@ -179,7 +180,7 @@ public class C8JEmulator implements Runnable{
         instruction16 = (short) (instruction16 << Byte.SIZE);
         instruction16 = (short) (instruction16 | memory8[programCounter + 1] & 0xFF);
 
-        logger.debug("Fetched instruction@PC={} = {}", Integer.toHexString(programCounter), Integer.toHexString(instruction16 & 0xFFFF));
+        logger.debug("Fetched instruction@PC={} = {}", Integer.toHexString(programCounter), Integer.toHexString(instruction16));
 
         programCounter += INSTRUCTION_WIDTH;
 
@@ -210,7 +211,7 @@ public class C8JEmulator implements Runnable{
         //System.out.printf("decoded instr = %x%x%x%x\n", decodedInstructions[0], decodedInstructions[1],decodedInstructions[2], decodedInstructions[3]);
         logger.info(String.format("decoded instr = %x%x%x%x", decodedInstructions[0], decodedInstructions[1],decodedInstructions[2], decodedInstructions[3]));
         int x, y;
-        byte n;
+        int n;
         switch (decodedInstructions[0]) {// TODO: refactor this big switch and dcoder better....
             case 0x0:
                 if (decodedInstructions[1] == 0x0 && decodedInstructions[2] == 0xE && decodedInstructions[3] == 0x0) { // 00E0
@@ -275,7 +276,7 @@ public class C8JEmulator implements Runnable{
                 x = (int) decodedInstructions[1];
                 n = (byte) (instruction16 & 0xFF);
                 vRegisters8[x] = n;
-                logger.debug("v[{}] = {} now", x, Integer.toHexString(n & 0xFF));
+                logger.debug("v[{}] = {} now", x, Integer.toHexString(n));
                 //System.out.printf("v[%d] = %x now\n", x, n);
                 break;
             case 0x7:
@@ -285,7 +286,7 @@ public class C8JEmulator implements Runnable{
                 n = (byte) (instruction16 & 0xFF);
                 vRegisters8[x] += n;
                 //System.out.printf("v[%d] = %x now\n", x, n);
-                logger.debug("v[{}] = {} now", x, Integer.toHexString(vRegisters8[x] & 0xFF));
+                logger.debug("v[{}] = {} now", x, Integer.toHexString(vRegisters8[x]));
                 break;
             case 0x8:
                 if (decodedInstructions[3] == 0x0) {
@@ -331,7 +332,7 @@ public class C8JEmulator implements Runnable{
                     vRegisters8[x] += vRegisters8[y];
                     vRegisters8[0xf] = 0;//why am i here ? todo check
                     //System.out.printf("v[%x] = v[%x] + v[%x] = %x, carry = %x\n", x, x, y, vRegisters[x],vRegisters[0xf]);
-                    logger.debug("v[{}] = v[{}] + v[{}] = {}, carry = {}", Integer.toHexString(x), Integer.toHexString(x), Integer.toHexString(y), Integer.toHexString(vRegisters8[x] & 0xFF), Integer.toHexString(vRegisters8[0xf] & 0xFF));
+                    logger.debug("v[{}] = v[{}] + v[{}] = {}, carry = {}", Integer.toHexString(x), Integer.toHexString(x), Integer.toHexString(y), Integer.toHexString(vRegisters8[x]), Integer.toHexString(vRegisters8[0xf]));
 
                 } else if (decodedInstructions[3] == 0x5) {
                     //System.out.println("8XY5: VX=VX-VY");
@@ -345,7 +346,7 @@ public class C8JEmulator implements Runnable{
                     }
                     vRegisters8[x] = (byte) (vRegisters8[x] - vRegisters8[y]);
                     //System.out.printf("v[%x] = v[%x] - v[%x] = %x, carry = %x\n", x, x, y, vRegisters[x],vRegisters[0xf]);
-                    logger.debug("v[{}] = v[{}] - v[{}] = {}, carry = {}", Integer.toHexString(x), Integer.toHexString(x), Integer.toHexString(y), Integer.toHexString(vRegisters8[x] & 0xFF), Integer.toHexString(vRegisters8[0xf] & 0xFF));
+                    logger.debug("v[{}] = v[{}] - v[{}] = {}, carry = {}", Integer.toHexString(x), Integer.toHexString(x), Integer.toHexString(y), Integer.toHexString(vRegisters8[x]), Integer.toHexString(vRegisters8[0xf]));
 
                 } else if (decodedInstructions[3] == 0x6) { // Ambiguous instruction, doing original!
                     //System.out.println("8XY6: VX shiftRight");
@@ -360,7 +361,7 @@ public class C8JEmulator implements Runnable{
                     }
                     vRegisters8[x] = (byte) (vRegisters8[x] >> 1);
                     //System.out.printf("VX now = %x, VF = %x\n", vRegisters[x], vRegisters[0xf]);
-                    logger.debug("VX now = {}, VF = {}", Integer.toHexString(vRegisters8[x] & 0xFF), Integer.toHexString(vRegisters8[0xf] & 0xFF));
+                    logger.debug("VX now = {}, VF = {}", Integer.toHexString(vRegisters8[x]), Integer.toHexString(vRegisters8[0xf]));
                 } else if (decodedInstructions[3] == 0x7) {
                     //System.out.println("8XY5: VX=VY-VX");
                     logger.debug("8XY5: VX=VY-VX");
@@ -373,7 +374,7 @@ public class C8JEmulator implements Runnable{
                     }
                     vRegisters8[x] = (byte) (vRegisters8[y] - vRegisters8[x]);
                     //System.out.printf("v[%x] = v[%x] - v[%x] = %x, carry = %x\n", x, y, x, vRegisters[x],vRegisters[0xf]);
-                    logger.debug("v[{}] = v[{}] - v[{}] = {}, carry = {}", Integer.toHexString(x), Integer.toHexString(y), Integer.toHexString(x), Integer.toHexString(vRegisters8[x] & 0xFF), Integer.toHexString(vRegisters8[0xf] & 0xFF));
+                    logger.debug("v[{}] = v[{}] - v[{}] = {}, carry = {}", Integer.toHexString(x), Integer.toHexString(y), Integer.toHexString(x), Integer.toHexString(vRegisters8[x]), Integer.toHexString(vRegisters8[0xf]));
 
                 } else if (decodedInstructions[3] == 0xE) {/// Ambiguous instruction, doing original!
                     //System.out.println("8XYE: VX shiftLeft");
@@ -387,7 +388,7 @@ public class C8JEmulator implements Runnable{
                         vRegisters8[0xf] = 0;
                     }
                     vRegisters8[x] = (byte) (vRegisters8[x] << 1);
-                    logger.debug("VX now = {}, VF = {}", Integer.toHexString(vRegisters8[x] & 0xFF), Integer.toHexString(vRegisters8[0xf] & 0xFF));
+                    logger.debug("VX now = {}, VF = {}", Integer.toHexString(vRegisters8[x]), Integer.toHexString(vRegisters8[0xf]));
                 } else {
                     throw new Exception(String.format("%x decoded intr unimplemented %n", instruction16)); // TODO make
                                                                                                          // custom
