@@ -315,12 +315,11 @@ public class C8JEmulator implements Runnable{
             case 0x7:
                 //System.out.printf("7XNN: VX += NN\n");
                 logger.debug("7XNN: VX += NN");
-                x = (int) decodedInstructions[1];
-                n = (int) (instruction16 & 0xFF);
+                x = decodedInstructions[1];
+                n = instruction16 & 0xFF;
                 vRegisters8[x] += n;
-                if(vRegisters8[x] > 0xFF){                        // overflow 255
-                    vRegisters8[x] = (vRegisters8[x] % 0xFF) - 1; // v - 255 - 1
-                }
+                vRegisters8[x] &= 0xFF; //overflow 255, v-255-1; or mask off rest. ignore carry
+
                 //System.out.printf("v[%d] = %x now\n", x, n);
                 logger.debug("v[{}] = {} now", x, Integer.toHexString(vRegisters8[x]));
                 break;
