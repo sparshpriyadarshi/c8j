@@ -8,6 +8,7 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.Random;
 import java.util.Scanner;
@@ -40,8 +41,8 @@ public class C8JEmulator implements Runnable{
 
     private static int INSTRUCTION_RATE = 600;       // isn't really defined, good default, TODO:should be configurable
 
-    private static int DISP_W = 64;
-    private static int DISP_H = 32;
+    public static final int DISP_W = 64;
+    public static final int DISP_H = 32;
     private static int DISP_RATE = 60;               // isn't really defined, but good to sync with other timers...
     
     public int[] DISP_RGBA_FG = { 255,255,255,255 };
@@ -113,6 +114,38 @@ public class C8JEmulator implements Runnable{
         emuTimeInstant = Instant.now();
     }
 
+    public C8JEmulator(byte[] progBytes) throws IOException {
+        // initialize empty registers V0 to VF, I, Stack
+        vRegisters8 = new int[NUM_V_REGISTERS];
+        iRegister16 = 0;
+        stack16 = new Stack<>();
+        programCounter = 0;
+        delayTimer = (byte)0xFF;//TODO set off timers
+        soundTimer = (byte)0xFF;//TODO set of timers
+        memory8 = new int[MAX_ADDRESSIBLE_BYTES];
+
+        loadFonts();
+        setProgram(progBytes);
+        programCounter = loadProgram();
+
+        instruction16 = 0;
+        decodedInstructions = new int[4];
+
+        displayLines = new long[DISP_H]; //long's width = 64
+        keyPress = 'x'; //keypad should be classed 
+
+        instructionCounter = 0;
+        state = EMU_STATE.INITIALIZED;
+        emuTimeInstant = Instant.now();
+    }
+
+
+    private void setProgram(byte[] bytes){
+        program = Arrays.copyOf(bytes, bytes.length);
+        System.out.println("Setting Program:");
+        System.out.println(HEX_LINEAR_FORMATTER.formatHex(program));
+    }
+
     private void readCh8Binary(Path path) throws IOException {
         File binFile = new File(path.toUri());
         FileInputStream fileInputStream = new FileInputStream(binFile);
@@ -176,9 +209,9 @@ public class C8JEmulator implements Runnable{
 
         // TODO: investigate this and idiomatic refactors, java has signed bytes
         instruction16 = 0x0000;
-        instruction16 = (short) (instruction16 | memory8[programCounter] & 0xFF);
-        instruction16 = (short) (instruction16 << Byte.SIZE);
-        instruction16 = (short) (instruction16 | memory8[programCounter + 1] & 0xFF);
+        instruction16 = (instruction16 | memory8[programCounter] & 0xFF);
+        instruction16 = (instruction16 << Byte.SIZE);
+        instruction16 = (instruction16 | memory8[programCounter + 1] & 0xFF);
 
         logger.debug("Fetched instruction@PC={} = {}", Integer.toHexString(programCounter), Integer.toHexString(instruction16));
 
@@ -252,8 +285,8 @@ public class C8JEmulator implements Runnable{
                 break;
             case 0x4:
                 //System.out.printf("4XNN: skip if VX not NN");
-                x = (int) decodedInstructions[1];
-                n = (byte) (instruction16 & 0xFF);
+                x = (int)decodedInstructions[1];
+                n = (byte)(instruction16 & 0xFF);
                 //System.out.printf("vx=%x ? n=%x \n", vRegisters[x], n);
                 if (vRegisters8[x] != n) {
                     //System.out.printf("skipped\n");
@@ -273,8 +306,8 @@ public class C8JEmulator implements Runnable{
             case 0x6:
                 //System.out.printf("6XNN: set VX = NN\n");
                 logger.debug("6XNN: set VX = NN");
-                x = (int) decodedInstructions[1];
-                n = (byte) (instruction16 & 0xFF);
+                x = decodedInstructions[1];
+                n = instruction16 & 0xFF;
                 vRegisters8[x] = n;
                 logger.debug("v[{}] = {} now", x, Integer.toHexString(n));
                 //System.out.printf("v[%d] = %x now\n", x, n);
@@ -283,8 +316,11 @@ public class C8JEmulator implements Runnable{
                 //System.out.printf("7XNN: VX += NN\n");
                 logger.debug("7XNN: VX += NN");
                 x = (int) decodedInstructions[1];
-                n = (byte) (instruction16 & 0xFF);
+                n = (int) (instruction16 & 0xFF);
                 vRegisters8[x] += n;
+                if(vRegisters8[x] > 0xFF){                        // overflow 255
+                    vRegisters8[x] = (vRegisters8[x] % 0xFF) - 1; // v - 255 - 1
+                }
                 //System.out.printf("v[%d] = %x now\n", x, n);
                 logger.debug("v[{}] = {} now", x, Integer.toHexString(vRegisters8[x]));
                 break;
@@ -781,6 +817,10 @@ public class C8JEmulator implements Runnable{
 
     public EMU_STATE getState() {
         return state;
+    }
+
+    public long[] getDisplayLines(){
+        return displayLines;
     }
 
     public int[] getImageData(){
