@@ -255,7 +255,7 @@ public class C8JEmulator implements Runnable{
                     programCounter = stack16.pop();
                     logger.debug("00EE ret from subrt to {}", Integer.toHexString(programCounter));
                 } else { // 0NNN calls machine language subroutine at NNN,not implemented here...
-                    throw new Exception("0NNN exec mach lang subrt at NNN, this is unimplemented");
+                    throw new RuntimeException("Instruction 0NNN (execute machine language subroutine at NNN), is unsupported");
                 }
                 break;
             case 0x1:
