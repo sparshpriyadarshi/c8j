@@ -167,7 +167,7 @@ public class C8JEmulatorTests {
     @Test
     @Tag("Instruction")
     @Tag("Subroutines")
-    void test2NNNand00EECallSubroutineAtNNN() throws Exception{
+    void test2NNNCallSubroutineAtNNNand00EEReturnFromSubroutine() throws Exception{
        
        
         byte[] prog = HexFormat.of().parseHex("2206670400E0220C670300EE6701670200EE");
