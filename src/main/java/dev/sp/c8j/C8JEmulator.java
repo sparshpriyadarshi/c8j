@@ -459,8 +459,8 @@ public class C8JEmulator implements Runnable{
                 //System.out.printf("CXNN: random-num AND NN into VX\n");
                 Random randomizer = new Random();
                 int randInt = randomizer.nextInt();
-                byte randValue = (byte) ((randInt & 0xFF) & (instruction16 & 0xFF));
-                vRegisters8[(int) decodedInstructions[1]] = randValue;
+                int randValue = ((randInt) & (instruction16 & 0xFF));
+                vRegisters8[decodedInstructions[1]] = randValue;
                 //System.out.printf("rand value in VX = %x\n", randValue);
                 break;
             case 0xD:
