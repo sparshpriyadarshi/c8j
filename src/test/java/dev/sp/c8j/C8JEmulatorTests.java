@@ -265,24 +265,118 @@ public class C8JEmulatorTests {
     @Tag("Instruction")
     void test3XNN() throws Exception {
         // skip if vx == nn
+        byte[] prog = HexFormat.of().parseHex(
+                        "61AA" + //0x200
+                        "310A" + //0x202
+                        "61FF" + //0x204
+                        "31FF" + //0x206
+                        "6101" + //0x208 shouldn't happen
+                        "00E0"   //0x20A
+                    );
+        C8JEmulator emu = new C8JEmulator(prog);
+
+        emu.step();
+        emu.step();
+        emu.step();
+        assertEquals(0x206, emu.getProgramCounter());
+        assertEquals(0xFF, emu.getVRegisters()[1]);
+
+        emu.step();
+        assertEquals(0x20A, emu.getProgramCounter());
+        assertNotEquals(0x01, emu.getVRegisters()[1]);
+
+        emu.step();
+        assertEquals(0xFF, emu.getVRegisters()[1]);
+        
+
+        
     }
 
     @Test
     @Tag("Instruction")
     void test4XNN() throws Exception {
         // skip if vx != nn
+        byte[] prog = HexFormat.of().parseHex(
+                        "61AA" + //0x200
+                        "410A" + //0x202
+                        "61FF" + //0x204 unreachable
+                        "41AA" + //0x206
+                        "6101" + //0x208
+                        "00E0"   //0x20A
+                    );
+        C8JEmulator emu = new C8JEmulator(prog);
+
+        emu.step();
+        assertEquals(0xAA, emu.getVRegisters()[1]);
+        emu.step();
+        assertEquals(0x206, emu.getProgramCounter());
+        emu.step();
+        assertEquals(0x208, emu.getProgramCounter());
+        emu.step();
+        assertEquals(0x1, emu.getVRegisters()[1]);
+        assertEquals(0x20A, emu.getProgramCounter());
+        emu.step();
+        
     }
 
     @Test
     @Tag("Instruction")
     void test5XY0() throws Exception {
         // skip if vx == vy
+         byte[] prog = HexFormat.of().parseHex(
+                        "6AAA" + //0x200
+                        "6BAA" + //0x202
+                        "5AB0" + //0x204
+                        "6AFF" + //0x206 unreachable
+                        "6BFF" + //0x208
+                        "5AB0" + //0x20A
+                        "6FFF"   //0x20C
+                    );
+        C8JEmulator emu = new C8JEmulator(prog);
+        emu.step();
+        emu.step();
+        assertEquals(0xAA, emu.getVRegisters()[0xA]);
+        assertEquals(0xAA, emu.getVRegisters()[0xB]);
+        emu.step();
+        assertEquals(0x208, emu.getProgramCounter());
+
+        emu.step();
+        emu.step();
+        emu.step();
+        assertEquals(0xAA, emu.getVRegisters()[0xA]);
+        assertEquals(0xFF, emu.getVRegisters()[0xB]);
+        assertEquals(0xFF, emu.getVRegisters()[0xF]);
+        assertEquals(0x20E, emu.getProgramCounter());
     }
 
     @Test
     @Tag("Instruction")
     void test9XY0() throws Exception {
         // skip if vx != vy
+        byte[] prog = HexFormat.of().parseHex(
+                        "6A0A" + //0x200
+                        "6B0B" + //0x202
+                        "9AB0" + //0x204
+                        "6AFF" + //0x206 unreachable
+                        "6A0B" + //0x208
+                        "9AB0" + //0x20A
+                        "6FFF"   //0x20C, canary
+                    );
+        C8JEmulator emu = new C8JEmulator(prog);
+        emu.step();
+        emu.step();
+        assertEquals(0x0A, emu.getVRegisters()[0xA]);
+        assertEquals(0x0B, emu.getVRegisters()[0xB]);
+        emu.step();
+        assertEquals(0x208, emu.getProgramCounter());
+
+        emu.step();
+        emu.step();
+        emu.step();
+        assertEquals(0xB, emu.getVRegisters()[0xA]);
+        assertEquals(0xB, emu.getVRegisters()[0xB]);
+        assertEquals(0xFF, emu.getVRegisters()[0xF]);
+        assertEquals(0x20E, emu.getProgramCounter());
     }
 
     @Test

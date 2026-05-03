@@ -275,8 +275,8 @@ public class C8JEmulator implements Runnable{
                 break;
             case 0x3:
                 //System.out.printf("3XNN: skip if VX is NN");
-                x = (int) decodedInstructions[1];
-                n = (byte) (instruction16 & 0xFF);
+                x = decodedInstructions[1];
+                n = instruction16 & 0xFF;
                 //System.out.printf("vx=%x ? n=%x \n", vRegisters[x], n);
                 if (vRegisters8[x] == n) {
                     //System.out.printf("skipped\n");
@@ -285,8 +285,8 @@ public class C8JEmulator implements Runnable{
                 break;
             case 0x4:
                 //System.out.printf("4XNN: skip if VX not NN");
-                x = (int)decodedInstructions[1];
-                n = (byte)(instruction16 & 0xFF);
+                x = decodedInstructions[1];
+                n = instruction16 & 0xFF;
                 //System.out.printf("vx=%x ? n=%x \n", vRegisters[x], n);
                 if (vRegisters8[x] != n) {
                     //System.out.printf("skipped\n");
@@ -295,8 +295,8 @@ public class C8JEmulator implements Runnable{
                 break;
             case 0x5:
                 //System.out.printf("5XY0: skip if VX is VY");
-                x = (int) decodedInstructions[1];
-                y = (int) decodedInstructions[2];
+                x = decodedInstructions[1];
+                y = decodedInstructions[2];
                 //System.out.printf("vx=%x ? vy=%x \n", vRegisters[x], vRegisters[y]);
                 if (vRegisters8[x] == vRegisters8[y]) {
                     //System.out.printf("skipped\n");
@@ -434,8 +434,8 @@ public class C8JEmulator implements Runnable{
                 break;
             case 0x9:
                 //System.out.printf("9XY0: skip if VX not VY");
-                x = (int) decodedInstructions[1];
-                y = (int) decodedInstructions[2];
+                x = decodedInstructions[1];
+                y = decodedInstructions[2];
                 //System.out.printf("vx=%x ? vy=%x \n", vRegisters[x], vRegisters[y]);
                 if (vRegisters8[x] != vRegisters8[y]) {
                     //System.out.printf("skipped\n");
