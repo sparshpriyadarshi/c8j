@@ -18,6 +18,7 @@ import java.lang.reflect.Field;
 import java.util.EmptyStackException;
 import java.util.HexFormat;
 import java.util.Set;
+import java.util.stream.IntStream;
 
 public class C8JEmulatorTests {
     // private final C8JEmulator emulator;
@@ -384,6 +385,21 @@ public class C8JEmulatorTests {
     void testBNNN() throws Exception {
         // Jump to V0 + NNN; aka jump with offset
         // warning: quirks, doing original
+        
+        byte[] prog = HexFormat.of().parseHex(
+            "600A" + //0x200
+            "B200" + //0x202
+            "6023" + //0x204
+            "6004" + //0x206
+            "6001" + //0x208
+            "60AA"   //0x20A only possible val at end
+        );
+        C8JEmulator emu = new C8JEmulator(prog);
+        emu.step();
+        emu.step();
+        emu.step();
+        assertEquals(0x20C,emu.getProgramCounter());
+        assertEquals(0xAA, emu.getVRegisters()[0]);
 
     }
 
@@ -393,48 +409,187 @@ public class C8JEmulatorTests {
         // I += VX, Add VX to index register
         // warning: quirks, original didn't affect VF
 
+         var prog = HexFormat.of().parseHex(
+            "6001" + //0x200
+            "6102" + //0x202
+            "62FF" + //0x204
+            "F01E" + //0x206
+            "F11E" + //0x208
+            "F21E"   //0x20A 
+        );
+        var emu = new C8JEmulator(prog);
+        emu.step();
+        emu.step();
+        emu.step();
+        emu.step();
+        emu.step();
+        emu.step();
+        assertEquals(0x102, emu.getIRegister());
+
     }
 
     @Test
     @Tag("Instruction")
     void test8XY0() throws Exception {
         // 8XY0: Set VX = VY
+        var prog = HexFormat.of().parseHex(
+            "6111" + //0x200
+            "8F10"   //0x202
+        );
+        var emu = new C8JEmulator(prog);
+        emu.step();
+        emu.step();
+        assertEquals(0x11, emu.getVRegisters()[15]);
     }
 
     @Test
     @Tag("Instruction")
     void test8XY1() throws Exception {
         // 8XY1: VX = VX OR VY
+        var prog = HexFormat.of().parseHex(
+            "61F1" + //0x200
+            "620F" + //0x202
+            "8121"   //0x204
+        );
+        var emu = new C8JEmulator(prog);
+        emu.step();
+        emu.step();
+        emu.step();
+        assertEquals(255, emu.getVRegisters()[1]);
     }
 
     @Test
     @Tag("Instruction")
     void test8XY2() throws Exception {
         // 8XY2: VX = VX AND VY
+        var prog = HexFormat.of().parseHex(
+            "61F1" + //0x200
+            "620F" + //0x202
+            "8122"   //0x204
+        );
+        var emu = new C8JEmulator(prog);
+        emu.step();
+        emu.step();
+        emu.step();
+        assertEquals(1, emu.getVRegisters()[1]);
     }
 
     @Test
     @Tag("Instruction")
     void test8XY3() throws Exception {
         // 8XY3: VX = VX XOR VY
+        var prog = HexFormat.of().parseHex(
+            "61F1" + //0x200
+            "620F" + //0x202
+            "8123"   //0x204
+        );
+        var emu = new C8JEmulator(prog);
+        emu.step();
+        emu.step();
+        emu.step();
+        assertEquals(0xFE, emu.getVRegisters()[1]);
     }
 
     @Test
     @Tag("Instruction")
     void test8XY4() throws Exception {
         // 8XY4: VX = VX + VY, VF = 1 if overflow (>255)
+        var prog = HexFormat.of().parseHex(
+            "6001" + //0x200
+            "61FE" + //0x202
+            "6202" + //0x204
+            "8014" + //0x206
+            "8024"   //0x208
+        );
+        var emu = new C8JEmulator(prog);
+        emu.step();
+        emu.step();
+        emu.step();
+        assertEquals(0, emu.getVRegisters()[0xF]);
+
+        emu.step();
+        assertEquals(0, emu.getVRegisters()[0xF]);
+        assertEquals(0xFF, emu.getVRegisters()[0]);
+
+        emu.step();
+        assertEquals(1, emu.getVRegisters()[0xF]);
+        assertEquals(1, emu.getVRegisters()[0]);
+
+
+
     }
 
     @Test
     @Tag("Instruction")
     void test8XY5() throws Exception {
         // 8XY5: VX = VX - VY, VF = 1 if VX >= VY; yea it looks counter intuitive...
+        var prog = HexFormat.of().parseHex(
+            "61FF" + //0x200
+            "6202" + //0x202
+            "63FF" + //0x204
+            "64FE" + //0x206
+            "8125" + //0x208 v1 is now FD, VF = 1
+            "8135" + //0x20A v1 is now FE, VF = 0
+            "8145"   //0x20C v1 is now 0. VF = 1  
+        );
+        var emu = new C8JEmulator(prog);
+        IntStream.range(0, 4).forEachOrdered(i->{
+            assertDoesNotThrow(()->emu.step());
+        });
+        assertEquals(0xFF, emu.getVRegisters()[1]);
+        assertEquals(0, emu.getVRegisters()[15]);
+
+        emu.step();
+        assertEquals(0xFD, emu.getVRegisters()[1]);
+        assertEquals(1, emu.getVRegisters()[15]);
+
+        emu.step();
+        assertEquals(0xFE, emu.getVRegisters()[1]);
+        assertEquals(0, emu.getVRegisters()[15]);
+
+        emu.step();
+        assertEquals(0x00, emu.getVRegisters()[1]);
+        assertEquals(1, emu.getVRegisters()[15]);
+
+
     }
 
     @Test
     @Tag("Instruction")
     void test8XY7() throws Exception {
         // 8XY7: VX = VY - VX, VF = 1 if VY >= VX, counter intuitive...
+       var prog = HexFormat.of().parseHex(
+            "6101" + //0x200
+            "62FF" + //0x202
+            "6301" + //0x204
+            "64FF" + //0x206
+            "8147" + //0x208 v1 is now FE, VF = 1  
+            "8137" + //0x20A v1 is now 03, VF = 0 
+            "8127"   //0x20C v1 is now FC, VF = 1  
+        );
+
+        /*
+        FF, 255 - 1 = FE,254
+        1 - FE,254 = -254 + 1 = -256 + 2 + 1 = 3; -253 + 255+1 = 3  :'( )
+        */
+        var emu = new C8JEmulator(prog);
+        IntStream.range(0, 4).forEachOrdered(i->{
+            assertDoesNotThrow(()->emu.step());
+        });
+        assertEquals(1, emu.getVRegisters()[1]);
+        assertEquals(0, emu.getVRegisters()[15]);
+
+        emu.step();
+        assertEquals(0xFE, emu.getVRegisters()[1]);
+        assertEquals(1, emu.getVRegisters()[15]);
+
+        emu.step();
+        assertEquals(3, emu.getVRegisters()[1]);
+        assertEquals(0, emu.getVRegisters()[15]);
+
+        emu.step();
+        assertEquals(0xFC, emu.getVRegisters()[1]);
+        assertEquals(1, emu.getVRegisters()[15]);
 
     }
 
@@ -444,6 +599,15 @@ public class C8JEmulatorTests {
         // 8XY6: 
         // VX = VY; warning quirk: newer didn't do this assignment
         // VX = VX >> 1; VF = 1 if bit shifted out was 1. 
+        var prog = HexFormat.of().parseHex(
+            "" + //0x200
+            "" + //0x202
+            "" + //0x204
+            "" + //0x206
+            "" + //0x208
+            ""   //0x20A 
+        );
+        var emu = new C8JEmulator(prog);
     }
 
     @Test
@@ -452,6 +616,15 @@ public class C8JEmulatorTests {
         // 8XYE: 
         // VX = VY; warning quirk: newer didn't do this assignment
         // VX = VX << 1; VF = 1 if bit shifted out was 1. 
+        var prog = HexFormat.of().parseHex(
+            "" + //0x200
+            "" + //0x202
+            "" + //0x204
+            "" + //0x206
+            "" + //0x208
+            ""   //0x20A 
+        );
+        var emu = new C8JEmulator(prog);
     }
 
 
@@ -459,6 +632,15 @@ public class C8JEmulatorTests {
     @Tag("Instruction")
     void testFX29() throws Exception{
         // FX29: set I = address of VX's hex character (thats the last nibble only)
+        var prog = HexFormat.of().parseHex(
+            "" + //0x200
+            "" + //0x202
+            "" + //0x204
+            "" + //0x206
+            "" + //0x208
+            ""   //0x20A 
+        );
+        var emu = new C8JEmulator(prog);
     }
 
     @Test
@@ -469,6 +651,15 @@ public class C8JEmulatorTests {
         // M[I+1] = BCD(VX)[1],
         // M[I+2] = BCD(VX)[2],
 
+        var prog = HexFormat.of().parseHex(
+            "" + //0x200
+            "" + //0x202
+            "" + //0x204
+            "" + //0x206
+            "" + //0x208
+            ""   //0x20A 
+        );
+        var emu = new C8JEmulator(prog);
 
     }
  
@@ -479,6 +670,16 @@ public class C8JEmulatorTests {
         // warning, quirk: originally I ended up at I + X + 1 since I itself was incremented each time at load or store.
         // modern versions don't modify I ... 
 
+        var prog = HexFormat.of().parseHex(
+            "" + //0x200
+            "" + //0x202
+            "" + //0x204
+            "" + //0x206
+            "" + //0x208
+            ""   //0x20A 
+        );
+        var emu = new C8JEmulator(prog);
+
     }
 
     @Test
@@ -488,6 +689,16 @@ public class C8JEmulatorTests {
         // warning, quirk: originally I ended up at I + X + 1 since I itself was incremented each time at load or store.
         // modern versions don't modify I ... 
 
+        var prog = HexFormat.of().parseHex(
+            "" + //0x200
+            "" + //0x202
+            "" + //0x204
+            "" + //0x206
+            "" + //0x208
+            ""   //0x20A 
+        );
+        var emu = new C8JEmulator(prog);
+
     }
 
 
@@ -496,18 +707,48 @@ public class C8JEmulatorTests {
     @Tag("Instruction")
     void testFX07() throws Exception{
         // FX07: VX = delay-timer value
+
+        var prog = HexFormat.of().parseHex(
+            "" + //0x200
+            "" + //0x202
+            "" + //0x204
+            "" + //0x206
+            "" + //0x208
+            ""   //0x20A 
+        );
+        var emu = new C8JEmulator(prog);
     }
     
     @Test
     @Tag("Instruction")
     void testFX15() throws Exception{
         // FX15: set delay-timer = VX
+
+        var prog = HexFormat.of().parseHex(
+            "" + //0x200
+            "" + //0x202
+            "" + //0x204
+            "" + //0x206
+            "" + //0x208
+            ""   //0x20A 
+        );
+        var emu = new C8JEmulator(prog);
     }
     
     @Test
     @Tag("Instruction")
     void testFX18() throws Exception{
         // FX18: set sound-timer = VX
+
+        var prog = HexFormat.of().parseHex(
+            "" + //0x200
+            "" + //0x202
+            "" + //0x204
+            "" + //0x206
+            "" + //0x208
+            ""   //0x20A 
+        );
+        var emu = new C8JEmulator(prog);
     }
 
 
@@ -518,6 +759,16 @@ public class C8JEmulatorTests {
         // wait(indefinitely) for key input;
         // set VX = keypress once received; 
         // continue then...
+
+        var prog = HexFormat.of().parseHex(
+            "" + //0x200
+            "" + //0x202
+            "" + //0x204
+            "" + //0x206
+            "" + //0x208
+            ""   //0x20A 
+        );
+        var emu = new C8JEmulator(prog);
         
     }
 
@@ -526,6 +777,16 @@ public class C8JEmulatorTests {
     void testEX9E() throws Exception{
         // EX9E: skip 1 instruction if VX == keypress
         // note this doesn't wait for key input....
+
+        var prog = HexFormat.of().parseHex(
+            "" + //0x200
+            "" + //0x202
+            "" + //0x204
+            "" + //0x206
+            "" + //0x208
+            ""   //0x20A 
+        );
+        var emu = new C8JEmulator(prog);
     }
 
     @Test
@@ -533,6 +794,16 @@ public class C8JEmulatorTests {
     void testEXA1() throws Exception{
         // EXA1: skip if VX != keypress...
         // doesn't wait for key input......
+
+        var prog = HexFormat.of().parseHex(
+            "" + //0x200
+            "" + //0x202
+            "" + //0x204
+            "" + //0x206
+            "" + //0x208
+            ""   //0x20A 
+        );
+        var emu = new C8JEmulator(prog);
 
         
     }
