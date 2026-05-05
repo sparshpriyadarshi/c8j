@@ -600,14 +600,31 @@ public class C8JEmulatorTests {
         // VX = VY; warning quirk: newer didn't do this assignment
         // VX = VX >> 1; VF = 1 if bit shifted out was 1. 
         var prog = HexFormat.of().parseHex(
-            "" + //0x200
-            "" + //0x202
-            "" + //0x204
-            "" + //0x206
-            "" + //0x208
-            ""   //0x20A 
+            "6000" + //0x200
+            "6105" + //0x202
+            "8016" + //0x204, VX now 2, VF = 1
+            "8006" + //0x206  VX now 1, VF = 0
+            "8006" + //0x208  VX now 0, VF = 1
+            "8006"   //0x20A  0, 0
         );
         var emu = new C8JEmulator(prog);
+
+        emu.step();emu.step();emu.step();
+        assertEquals(2, emu.getVRegisters()[0]);
+        assertEquals(1, emu.getVRegisters()[0xF]);
+
+        emu.step();
+        assertEquals(1, emu.getVRegisters()[0]);
+        assertEquals(0, emu.getVRegisters()[0xF]);
+
+        emu.step();
+        assertEquals(0, emu.getVRegisters()[0]);
+        assertEquals(1, emu.getVRegisters()[0xF]);
+
+        emu.step();
+        assertEquals(0, emu.getVRegisters()[0]);
+        assertEquals(0, emu.getVRegisters()[0xF]);
+
     }
 
     @Test
@@ -617,14 +634,41 @@ public class C8JEmulatorTests {
         // VX = VY; warning quirk: newer didn't do this assignment
         // VX = VX << 1; VF = 1 if bit shifted out was 1. 
         var prog = HexFormat.of().parseHex(
-            "" + //0x200
-            "" + //0x202
-            "" + //0x204
-            "" + //0x206
-            "" + //0x208
-            ""   //0x20A 
+            "6000" + //0x200
+            "617F" + //0x202
+            "801E" + //0x204, VX now  FE, VF = 0 
+            "800E" + //0x206  VX now  FC, VF = 1 
+            "800E" + //0x208  VX now  F8, VF = 1 
+            "800E" + //0x20A   F0, 1  
+            "800E" + //0x20C   E0, 1  
+            "800E" + //0x20E   C0, 1  
+            "800E" + //0x210   80, 1  
+            "800E" + //0x212    0, 1  
+            "800E"   //0x214    0, 0  
+            
         );
         var emu = new C8JEmulator(prog);
+
+        emu.step();emu.step();emu.step();
+        assertEquals(0xFE, emu.getVRegisters()[0]);
+        assertEquals(0, emu.getVRegisters()[0xF]);
+
+        emu.step();
+        assertEquals(0xFC, emu.getVRegisters()[0]);
+        assertEquals(1, emu.getVRegisters()[0xF]);
+
+        emu.step();
+        assertEquals(0xF8, emu.getVRegisters()[0]);
+        assertEquals(1, emu.getVRegisters()[0xF]);
+
+        emu.step();
+        assertEquals(0xF0, emu.getVRegisters()[0]);
+        assertEquals(1, emu.getVRegisters()[0xF]);
+        for (int i = 0; i < 5; i++) {
+            emu.step();
+        }
+        assertEquals(0, emu.getVRegisters()[0]);
+        assertEquals(0, emu.getVRegisters()[0xF]);
     }
 
 
