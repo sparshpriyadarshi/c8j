@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.lang.reflect.Field;
 import java.util.EmptyStackException;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.IntStream;
 
@@ -677,14 +678,25 @@ public class C8JEmulatorTests {
     void testFX29() throws Exception{
         // FX29: set I = address of VX's hex character (thats the last nibble only)
         var prog = HexFormat.of().parseHex(
-            "" + //0x200
-            "" + //0x202
-            "" + //0x204
-            "" + //0x206
-            "" + //0x208
-            ""   //0x20A 
+            "6100" + //0x200 0
+            "F129" + //0x202, 
+            "6505" + //0x204 5
+            "F529" + //0x206
+            "6F5F" + //0x208 F
+            "FF29"   //0x20A 
         );
         var emu = new C8JEmulator(prog);
+
+        emu.step();
+        emu.step();
+        assertEquals(80+5*0x0, emu.getIRegister());
+        emu.step();
+        emu.step();
+        assertEquals(80+5*0x5, emu.getIRegister());
+        emu.step();
+        emu.step();
+        assertEquals(80+5*0xF, emu.getIRegister());
+
     }
 
     @Test
@@ -696,14 +708,29 @@ public class C8JEmulatorTests {
         // M[I+2] = BCD(VX)[2],
 
         var prog = HexFormat.of().parseHex(
-            "" + //0x200
-            "" + //0x202
-            "" + //0x204
-            "" + //0x206
-            "" + //0x208
-            ""   //0x20A 
+                "6000" + // 0x200
+                        "61FF" + // 0x202
+                        "6280" + // 0x204
+                        "A300" + // 0x206
+                        "F033" + // 0x208
+                        "A400" + // 0x20A
+                        "F133" + // 0x20C
+                        "A500" + // 0x20E
+                        "F233"   // 0x210
         );
+
         var emu = new C8JEmulator(prog);
+        IntStream.range(0, prog.length / 2).forEach((i) -> {
+            assertDoesNotThrow(() -> emu.step());
+        });
+        assertEquals(List.of(0, 0, 0),
+                List.of(emu.getMemory8()[0x300], emu.getMemory8()[0x301], emu.getMemory8()[0x302]));
+        assertEquals(List.of(2, 5, 5),
+                List.of(emu.getMemory8()[0x400], emu.getMemory8()[0x401], emu.getMemory8()[0x402]));
+        assertEquals(List.of(1, 2, 8),
+                List.of(emu.getMemory8()[0x500], emu.getMemory8()[0x501], emu.getMemory8()[0x502]));
+    
+        
 
     }
  
@@ -715,14 +742,19 @@ public class C8JEmulatorTests {
         // modern versions don't modify I ... 
 
         var prog = HexFormat.of().parseHex(
-            "" + //0x200
-            "" + //0x202
-            "" + //0x204
-            "" + //0x206
-            "" + //0x208
-            ""   //0x20A 
+            "6111" + //0x200
+            "6222" + //0x202
+            "6333" + //0x204
+            "A400" + //0x206
+            "F355"   //0x208
         );
         var emu = new C8JEmulator(prog);
+
+        emu.multiStep(prog.length/2);
+        assertEquals(0x400, emu.getIRegister());//legacy impl.
+        assertEquals(List.of(0x00, 0x11,0x22,0x33), List.of(emu.getMemory8()[0x400],emu.getMemory8()[0x401],emu.getMemory8()[0x402], emu.getMemory8()[0x403]));
+
+
 
     }
 
@@ -734,14 +766,13 @@ public class C8JEmulatorTests {
         // modern versions don't modify I ... 
 
         var prog = HexFormat.of().parseHex(
-            "" + //0x200
-            "" + //0x202
-            "" + //0x204
-            "" + //0x206
-            "" + //0x208
-            ""   //0x20A 
+            "A050" + //0x200
+            "F365"   //0x202
         );
         var emu = new C8JEmulator(prog);
+        emu.multiStep(2);
+        // default font bytes at the time of writing
+        assertEquals(List.of(0xF0, 0x90, 0x90, 0x90), List.of(emu.getVRegisters()[0], emu.getVRegisters()[1], emu.getVRegisters()[2], emu.getVRegisters()[3]));
 
     }
 
@@ -753,14 +784,15 @@ public class C8JEmulatorTests {
         // FX07: VX = delay-timer value
 
         var prog = HexFormat.of().parseHex(
-            "" + //0x200
-            "" + //0x202
-            "" + //0x204
-            "" + //0x206
-            "" + //0x208
-            ""   //0x20A 
+            "6733" +
+            "F707" //should overwrite it
         );
         var emu = new C8JEmulator(prog);
+        emu.step();
+        assertEquals(0x33, emu.getVRegisters()[7]);
+        emu.step();
+        assertEquals(0xFF, emu.getVRegisters()[7]);
+        
     }
     
     @Test
@@ -769,30 +801,28 @@ public class C8JEmulatorTests {
         // FX15: set delay-timer = VX
 
         var prog = HexFormat.of().parseHex(
-            "" + //0x200
-            "" + //0x202
-            "" + //0x204
-            "" + //0x206
-            "" + //0x208
-            ""   //0x20A 
-        );
+                    "6733" +
+                    "F715" 
+                );
         var emu = new C8JEmulator(prog);
+        emu.multiStep(2);
+        assertEquals(0x33, emu.getDelayTimer());
     }
     
     @Test
     @Tag("Instruction")
     void testFX18() throws Exception{
         // FX18: set sound-timer = VX
-
         var prog = HexFormat.of().parseHex(
-            "" + //0x200
-            "" + //0x202
-            "" + //0x204
-            "" + //0x206
-            "" + //0x208
-            ""   //0x20A 
-        );
+                            "6733" +
+                            "F718" 
+                        );
+
         var emu = new C8JEmulator(prog);
+        assertEquals(0xFF, emu.getSoundTimer());
+        emu.multiStep(2);
+        assertEquals(0x33, emu.getSoundTimer());
+
     }
 
 
@@ -804,15 +834,8 @@ public class C8JEmulatorTests {
         // set VX = keypress once received; 
         // continue then...
 
-        var prog = HexFormat.of().parseHex(
-            "" + //0x200
-            "" + //0x202
-            "" + //0x204
-            "" + //0x206
-            "" + //0x208
-            ""   //0x20A 
-        );
-        var emu = new C8JEmulator(prog);
+       //TODO
+
         
     }
 
@@ -821,7 +844,7 @@ public class C8JEmulatorTests {
     void testEX9E() throws Exception{
         // EX9E: skip 1 instruction if VX == keypress
         // note this doesn't wait for key input....
-
+        //TODO
         var prog = HexFormat.of().parseHex(
             "" + //0x200
             "" + //0x202
@@ -838,7 +861,7 @@ public class C8JEmulatorTests {
     void testEXA1() throws Exception{
         // EXA1: skip if VX != keypress...
         // doesn't wait for key input......
-
+        //TODO
         var prog = HexFormat.of().parseHex(
             "" + //0x200
             "" + //0x202
