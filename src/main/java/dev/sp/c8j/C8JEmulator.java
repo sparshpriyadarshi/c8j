@@ -3,6 +3,7 @@ package dev.sp.c8j;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
@@ -72,22 +73,13 @@ public class C8JEmulator implements Runnable{
     private long instructionCounter; //mainly for debugging
 
     // This welcome screen program is always loaded by default
-    //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/c8splash.ch8"; 
-    //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/ibmlogo.ch8"; 
-    //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/ibmlogo2.ch8"; 
-    //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/tim-c8-logo.ch8"; 
-    //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/persontest.ch8"; 
-    //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/kbtest.ch8"; // TODO this path can be
-    public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/corax+.ch8"; 
-    //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src\\main\\resources\\binaries\\corax-vx-overflow-only.ch8";
-    //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/corax+V-Overflow-Tests.ch8"; 
-    //public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/flagstest.ch8"; 
-                                                                                                        // done better
+    public static String DEFAULT_PROGRAM_SRC_FILEPATH = "src/main/resources/binaries/c8splash.ch8"; 
     public static HexFormat HEX_LINEAR_FORMATTER = HexFormat.ofDelimiter(":").withUpperCase().withPrefix("0x");
     static Logger logger = LoggerFactory.getLogger(LoggingController.class);
     
     public static final double JIFFY = 16.67;
 
+    //TODO: this IOException needs to go away...
     public C8JEmulator() throws IOException {
         // initialize empty registers V0 to VF, I, Stack
         vRegisters8 = new int[NUM_V_REGISTERS];
@@ -753,19 +745,25 @@ public class C8JEmulator implements Runnable{
 
     public static void main(String[] args) {
         System.out.println("Running C8MJ... | Current time = " + LocalDateTime.now());
-        
-        C8JEmulator emu;
+
         ((ch.qos.logback.classic.Logger) logger).setLevel(Level.DEBUG);
+        C8JEmulator emu;
+
         try {
-            emu = new C8JEmulator();
+            System.out.println("ARGS = " + Arrays.toString(args));
+            if (args.length > 0) {
+                Path path = Paths.get(args[0]); //TODO file extension validation...
+                byte[] romBytes = Files.readAllBytes(path);
+                emu = new C8JEmulator(romBytes);
+            } else {
+                emu = new C8JEmulator();
+            }
         } catch (IOException e) {
             e.printStackTrace();
-            System.err.println("Abnormally exiting C8MJ !");
+            System.err.println("Emulator initialization failed, exiting...");
             return;
         }
-        System.out.println(emu);
-        
-
+         
         Scanner scanner = new Scanner(System.in);
         boolean replLoop = true;
         char inChar = 'z';
