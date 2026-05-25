@@ -5,6 +5,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.tomcat.util.codec.binary.Base64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -131,6 +132,20 @@ public class C8JController {
                 // message.getType(),
                 // String.format("Serving frame for %s\n<c8j>%s</c8j>", message.toString(),
                 // emulator.dumpString()));
+
+                logger.debug(resp.toString());
+                break;
+             case ROM: //TODO this right now is just an alias for START, fix me
+                logger.debug("ROM: set binary event recieved...");
+                logger.debug("messagecontent = " + message.getContent());
+                
+                emulator = new C8JEmulator(java.util.Base64.getDecoder().decode(message.getContent()));
+                emulator.state = C8JEmulator.EMU_STATE.INITIALIZED;
+                logger.debug("Restarted with ROM data ");
+
+                scheduler = new ScheduledThreadPoolExecutor(1);
+                resp = new C8JServerMessage(message, System.currentTimeMillis(), emulator);
+
 
                 logger.debug(resp.toString());
                 break;

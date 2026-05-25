@@ -18,6 +18,7 @@ const CLIENT_MESSAGE_TYPE = {
     CONTROL: "CONTROL",
     FRAMEREQUEST:"FRAMEREQUEST",
     KEYPAD: "KEYPAD",
+    ROM: "ROM",
     CANARY: "CANARY"
 };
 const CLIENT_ID = crypto.randomUUID();
@@ -96,16 +97,21 @@ function Initialize() {
 	statusText.innerText = `STATUS: ${EMU_STATUSES.STOPPED}`;
 
 	const startButton = document.getElementById("start-button");
+    const binaryFileFormElement = document.getElementById("binary-file-form");
+    //const binaryFileInputElement = document.getElementById("binary-file-picker");
+    //const uploadButton = document.getElementById("upload-binary-button");
     const pauseButton = document.getElementById("pause-button");
-	const stopButton = document.getElementById("stop-button");
 	const stepButton = document.getElementById("step-button");
     const resumeButton = document.getElementById("resume-button");
     const clearButton = document.getElementById("clear-button");
+	const stopButton = document.getElementById("stop-button");
 
     const keypadButtons = document.getElementById("keypad-section").getElementsByClassName("keypad");
     const requestFrameButton = document.getElementById("request-frame-button");
    
 	//startButton.addEventListener("click", SetStatusStart);
+    //uploadButton.addEventListener('click', () => SendROMSetEvent(binaryFileInputElement)); //seems unidiomatic atm... button events should not have sideeffects, encapsulate in form element.
+    
     startButton.addEventListener('click', StompConnect);//TODO: what the hell did u do
     pauseButton.addEventListener('click', SendPauseEvent);
     stopButton.addEventListener('click', StompDisconnect);
@@ -116,6 +122,7 @@ function Initialize() {
 	clearButton.addEventListener("click", ClearLogs);
 
     document.querySelectorAll("form").forEach(form => form.addEventListener('submit', (e) => e.preventDefault()));
+    binaryFileFormElement.addEventListener('submit', (e)=> SendROMSetEvent(e));
 	requestFrameButton.addEventListener("click", SendFrameRequest);
     stepButton.addEventListener("click", SendStepEvent);
     resumeButton.addEventListener("click", SendResumeEvent);
@@ -187,6 +194,26 @@ function ClearLogs(){
 
 }
 
+async function SendROMSetEvent(e){
+    console.log("set ROM event for input = ", e.target);
+
+    const romFileInputElement = e.target.querySelector("input[name='ch8-file']");
+    /**@type {File} */
+    const romFile = romFileInputElement.files[0];
+    
+    /**@type {Uint8Array} */
+    const bytesResponse = await romFile.bytes();//TODO errors
+    const b64 = bytesResponse.toBase64();
+    
+    console.log("sending bytes = " + bytesResponse);
+    const clientStartMessage = {
+        "clientId": CLIENT_ID,
+        "timestamp": new Date().getTime(),
+        "type":CLIENT_MESSAGE_TYPE.ROM, 
+        "content": b64
+    };
+    sendClientMessage(clientStartMessage);
+}
 function SendStartEvent(){
     console.log("start event ");
     const clientStartMessage = {
@@ -271,7 +298,6 @@ function SendStopEvent(){
     clearInterval(CLIENT_FRAME_INTERVAL_ID);
     CLIENT_FRAME_INTERVAL_ID = null;
 }
-
 
 
 /* messaging */

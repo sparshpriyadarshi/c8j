@@ -177,7 +177,7 @@ public class C8JEmulator implements Runnable{
     private int loadProgram() {
         // initialize memory with program bytes
         for (int idx = PROGRAM_MEM_BASE_IDX; idx < PROGRAM_MEM_BASE_IDX + program.length; idx++) {
-            memory8[idx] = program[idx - PROGRAM_MEM_BASE_IDX];
+            memory8[idx] = program[idx - PROGRAM_MEM_BASE_IDX] & 0xFF;
         }
 
         System.out.println("Loaded program into memory, head: ");

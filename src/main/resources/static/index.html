@@ -18,7 +18,14 @@
 <main>
     <noscript><h2 style="color: #ff0000">Seems your browser doesn't support Javascript! Please enable
     Javascript and reload this page!</h2></noscript>
-    
+    <p> <button id="start-button">START</button> </p>
+    <p>
+    <form id="binary-file-form" method="post" enctype="multipart/form-data">
+        <label for="binary-file-picker">Upload ch8 binary:</label>
+        <input type="file" id="binary-file-picker" name="ch8-file" accept=".ch8" />
+        <input type="submit" title="Upload ROM/Binary/CH8 to resume-button" id="upload-binary-button"/> 
+    </form>
+    </p>
     <p>
         <canvas id="main-canvas">
             C8J Display
@@ -45,20 +52,21 @@
             <button class="keypad" id="f">F</button><br/>
         </section>
     </p>
+   
     <p>
-        <!--<form method="post" id="input-form"> -->
-        <button id="start-button">START</button>
+
         <!-- <button id="run-button">RUN</button> -->
         <button id="pause-button">PAUSE</button>
         <button id="step-button">STEP</button>
         <button id="request-frame-button">REQUEST-FRAME</button>
         <button id="resume-button">RESUME</button><br/>
-        <button id="stop-button">STOP</button>
+        
         <!-- <button id="send-client-message-canary">SEND CANARY</button>
         <button id="send-client-message1">SEND MESSAGE1</button> -->
         
         <!-- </form> -->
     </p>
+    <p><button id="stop-button">STOP</button></p>
     <p>
         EMULATION_STATE  = <span id="player-status-text"></span><br/>
         TIMESTAMP        = <span id="emu-server-timestamp"></span><br/>
