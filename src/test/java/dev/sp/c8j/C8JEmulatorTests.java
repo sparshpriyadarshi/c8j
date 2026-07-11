@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.IntStream;
 
+//TODO: some math functions can have vf as operand (vx/vy), update tests to cover those cases, discovered with "flagstest"
 public class C8JEmulatorTests {
     // private final C8JEmulator emulator;
 

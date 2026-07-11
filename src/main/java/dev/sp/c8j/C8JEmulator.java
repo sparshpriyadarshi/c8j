@@ -365,13 +365,16 @@ public class C8JEmulator implements Runnable{
                     y = decodedInstructions[2];
 
                     int sum = vRegisters8[x] + vRegisters8[y];
+                    int flagReg = 0;
                     if (sum > 0xFF) { // 255
-                        vRegisters8[0xf] = 1;//TODO check, 
+                        flagReg = 1;
                     } else {
-                        vRegisters8[0xf] = 0;
+                        flagReg = 0;
                     }
                     
                     vRegisters8[x] = sum & 0xFF;
+
+                    vRegisters8[0xf] = flagReg; // flags should be always set last !!!!!!!... because what if XorY is F.
                     //System.out.printf("v[%x] = v[%x] + v[%x] = %x, carry = %x\n", x, x, y, vRegisters[x],vRegisters[0xf]);
                     logger.debug("v[{}] = v[{}] + v[{}] = {}, carry = {}", Integer.toHexString(x), Integer.toHexString(x), Integer.toHexString(y), Integer.toHexString(vRegisters8[x]), Integer.toHexString(vRegisters8[0xf]));
 
@@ -381,12 +384,15 @@ public class C8JEmulator implements Runnable{
                     logger.debug("8XY5: VX=VX-VY");
                     x = decodedInstructions[1];
                     y = decodedInstructions[2];
+                    int flagReg = 0;
                     if (vRegisters8[x] >= vRegisters8[y]) {
-                        vRegisters8[0xf] = 1;
+                        flagReg = 1;
                     } else {
-                        vRegisters8[0xf] = 0;
+                        flagReg = 0;
                     }
                     vRegisters8[x] = (vRegisters8[x] - vRegisters8[y]) & 0xFF;
+
+                    vRegisters8[0xf] = flagReg; // flags should be always set last
                     //System.out.printf("v[%x] = v[%x] - v[%x] = %x, carry = %x\n", x, x, y, vRegisters[x],vRegisters[0xf]);
                     logger.debug("v[{}] = v[{}] - v[{}] = {}, carry = {}", Integer.toHexString(x), Integer.toHexString(x), Integer.toHexString(y), Integer.toHexString(vRegisters8[x]), Integer.toHexString(vRegisters8[0xf]));
 
@@ -398,13 +404,17 @@ public class C8JEmulator implements Runnable{
                     logger.debug("8XY6: VX shiftRight");
                     x = decodedInstructions[1];
                     y = decodedInstructions[2];
+                    int flagReg = 0;
+
                     vRegisters8[x] = vRegisters8[y]; // this doesn't happen in newer impls
                     if ((vRegisters8[x] & 0x01) == 0x01) {
-                        vRegisters8[0xf] = 1;
+                        flagReg = 1;
                     } else {
-                        vRegisters8[0xf] = 0;
+                        flagReg = 0;
                     }
                     vRegisters8[x] = (vRegisters8[x] >> 1) & 0xFF;
+
+                    vRegisters8[0xf] = flagReg; // flags should be always set last.
                     //System.out.printf("VX now = %x, VF = %x\n", vRegisters[x], vRegisters[0xf]);
                     logger.debug("VX now = {}, VF = {}", Integer.toHexString(vRegisters8[x]), Integer.toHexString(vRegisters8[0xf]));
                 } else if (decodedInstructions[3] == 0x7) {
@@ -412,12 +422,16 @@ public class C8JEmulator implements Runnable{
                     logger.debug("8XY5: VX=VY-VX");
                     x = decodedInstructions[1];
                     y = decodedInstructions[2];
+                    int flagReg = 0;
+
                     if (vRegisters8[y] >= vRegisters8[x]) {
-                        vRegisters8[0xf] = 1;
+                        flagReg = 1;
                     } else {
-                        vRegisters8[0xf] = 0;
+                        flagReg = 0;
                     }
                     vRegisters8[x] = (vRegisters8[y] - vRegisters8[x]) & 0xFF;
+
+                    vRegisters8[0xf] = flagReg; // flags should be always set last
                     //System.out.printf("v[%x] = v[%x] - v[%x] = %x, carry = %x\n", x, y, x, vRegisters[x],vRegisters[0xf]);
                     logger.debug("v[{}] = v[{}] - v[{}] = {}, carry = {}", Integer.toHexString(x), Integer.toHexString(y), Integer.toHexString(x), Integer.toHexString(vRegisters8[x]), Integer.toHexString(vRegisters8[0xf]));
 
@@ -429,13 +443,17 @@ public class C8JEmulator implements Runnable{
                     // VX = VX << 1; VF = 1 if bit shifted out was 1. 
                     x = decodedInstructions[1];
                     y = decodedInstructions[2];
+                    int flagReg = 0;
+
                     vRegisters8[x] = vRegisters8[y]; // this doesn't happen in newer impls
                     if ((vRegisters8[x] & 0x80) == 0x80) {
-                        vRegisters8[0xf] = 1;
+                        flagReg = 1;
                     } else {
-                        vRegisters8[0xf] = 0;
+                        flagReg = 0;
                     }
                     vRegisters8[x] = (vRegisters8[x] << 1) & 0xFF;
+
+                    vRegisters8[0xf] = flagReg; // flags should be always set last... because what if XorY is F.
                     logger.debug("VX now = {}, VF = {}", Integer.toHexString(vRegisters8[x]), Integer.toHexString(vRegisters8[0xf]));
                 } else {
                     throw new Exception(String.format("%x decoded intr unimplemented %n", instruction16)); // TODO make
