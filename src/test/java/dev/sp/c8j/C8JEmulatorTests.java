@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.IntStream;
 
-//TODO: some math functions can have vf as operand (vx/vy), update tests to cover those cases, discovered with "flagstest"
+
 public class C8JEmulatorTests {
     // private final C8JEmulator emulator;
 
@@ -501,7 +501,10 @@ public class C8JEmulatorTests {
             "61FE" + //0x202
             "6202" + //0x204
             "8014" + //0x206
-            "8024"   //0x208
+            "8024" + //0x208
+            "6FFE" + //0x20A
+            "6E01" + //0x20C
+            "8FE4"   //0x20E
         );
         var emu = new C8JEmulator(prog);
         emu.step();
@@ -517,6 +520,10 @@ public class C8JEmulatorTests {
         assertEquals(1, emu.getVRegisters()[0xF]);
         assertEquals(1, emu.getVRegisters()[0]);
 
+        emu.step();
+        emu.step();
+        emu.step();
+        assertEquals(0, emu.getVRegisters()[0xF]);
 
 
     }
@@ -532,8 +539,12 @@ public class C8JEmulatorTests {
             "64FE" + //0x206
             "8125" + //0x208 v1 is now FD, VF = 1
             "8135" + //0x20A v1 is now FE, VF = 0
-            "8145"   //0x20C v1 is now 0. VF = 1  
+            "8145" + //0x20C v1 is now 0. VF = 1
+            "6FFF" + //0x20E
+            "6EFF" + //0x210
+            "8FE5"   //0x212
         );
+
         var emu = new C8JEmulator(prog);
         IntStream.range(0, 4).forEachOrdered(i->{
             assertDoesNotThrow(()->emu.step());
@@ -552,6 +563,11 @@ public class C8JEmulatorTests {
         emu.step();
         assertEquals(0x00, emu.getVRegisters()[1]);
         assertEquals(1, emu.getVRegisters()[15]);
+        
+        emu.step();
+        emu.step();
+        emu.step();
+        assertEquals(1, emu.getVRegisters()[0xf]);
 
 
     }
@@ -567,7 +583,10 @@ public class C8JEmulatorTests {
             "64FF" + //0x206
             "8147" + //0x208 v1 is now FE, VF = 1  
             "8137" + //0x20A v1 is now 03, VF = 0 
-            "8127"   //0x20C v1 is now FC, VF = 1  
+            "8127" + //0x20C v1 is now FC, VF = 1
+            "6FFF" + //0x20E
+            "6EFF" + //0x210
+            "8FE7"   //0x212
         );
 
         /*
@@ -593,6 +612,12 @@ public class C8JEmulatorTests {
         assertEquals(0xFC, emu.getVRegisters()[1]);
         assertEquals(1, emu.getVRegisters()[15]);
 
+        emu.step();
+        emu.step();
+        emu.step();
+        assertEquals(1, emu.getVRegisters()[0xf]);
+
+
     }
 
     @Test
@@ -607,7 +632,9 @@ public class C8JEmulatorTests {
             "8016" + //0x204, VX now 2, VF = 1
             "8006" + //0x206  VX now 1, VF = 0
             "8006" + //0x208  VX now 0, VF = 1
-            "8006"   //0x20A  0, 0
+            "8006" + //0x20A  0, 0
+            "6F02" + //0x20C
+            "8FF6"   //0x20E
         );
         var emu = new C8JEmulator(prog);
 
@@ -626,6 +653,11 @@ public class C8JEmulatorTests {
         emu.step();
         assertEquals(0, emu.getVRegisters()[0]);
         assertEquals(0, emu.getVRegisters()[0xF]);
+
+        emu.step();
+        emu.step();
+        assertEquals(0, emu.getVRegisters()[0xF]);
+
 
     }
 
@@ -646,7 +678,9 @@ public class C8JEmulatorTests {
             "800E" + //0x20E   C0, 1  
             "800E" + //0x210   80, 1  
             "800E" + //0x212    0, 1  
-            "800E"   //0x214    0, 0  
+            "800E" + //0x214    0, 0  
+            "6F01" + //0x216
+            "8FFE"   //0x218
             
         );
         var emu = new C8JEmulator(prog);
@@ -671,6 +705,12 @@ public class C8JEmulatorTests {
         }
         assertEquals(0, emu.getVRegisters()[0]);
         assertEquals(0, emu.getVRegisters()[0xF]);
+
+        emu.step();
+        emu.step();
+        assertEquals(0, emu.getVRegisters()[0xF]);
+
+
     }
 
 
